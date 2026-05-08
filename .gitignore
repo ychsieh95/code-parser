@@ -1,0 +1,4 @@
+.venv/*
+config/*
+covers/*
+src/__pycache__/*
