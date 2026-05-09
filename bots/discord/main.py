@@ -70,9 +70,9 @@ async def on_message(message: discord.Message):
         await message.channel.send(content=f'Could not find title for code "{code}"')
         return
     elif has_cover:
-        await message.channel.send(content=f'**[{title}]({page_url})**', file=discord.File(f'{COVER_SAVE_DIR}/{code}.jpg', filename=f'{code}.jpg'))
+        await message.channel.send(content=f'**{code} | [{title}]({page_url})**', file=discord.File(f'{COVER_SAVE_DIR}/{code}.jpg', filename=f'{code}.jpg'))
     else:
-        await message.channel.send(content=f'**[{title}]({page_url})**')
+        await message.channel.send(content=f'**{code} | [{title}]({page_url})**')
 
 
 client.run(BOT_TOKEN)
