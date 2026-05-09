@@ -1,13 +1,12 @@
 import argparse
 import asyncio
 import os
-import re
-from config.configs import COVER_SAVE_DIR, DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
+from config.settings import COVER_SAVE_DIR, DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 from datetime import datetime
-from src.code_parser import CodeParser
-from src.discord_webhooker import DiscordWebhooker
-from src.logger import Logger, LogLevel
-from src.telegram_bot import TelegramBot
+from src.code_parser.code_parser import CodeParser
+from src.code_parser.discord_webhooker import DiscordWebhooker
+from src.code_parser.logger import Logger, LogLevel
+from src.code_parser.telegram_bot import TelegramBot
 
 
 dc_bot      = DiscordWebhooker(url=DISCORD_WEBHOOK_URL, retry_num=1)
@@ -39,20 +38,6 @@ def get_discord_log(code: str, title: str) -> str:
                  .replace('[', '［') \
                  .replace(']', '］')
     return f'**[{code} | {title}]({CodeParser().get_url(code)})**'
-
-
-def fix_codes(codes: list[str]) -> list[str]:
-    fixed_codes = []
-    for code in codes:
-        code = code.strip().upper()
-    for code in codes:
-        if matches:=re.match(r'^([a-zA-Z]{2,5})[-]?(\d{3,5})$', code):
-            fixed_codes.append(f'{matches.group(1)}-{matches.group(2)}')
-        elif matches:=re.match(r'^(FC2)[-]?(PPV)?[-]?(\d+)$', code):
-            fixed_codes.append(f'FC2-PPV-{matches.group(3)}')
-        else:
-            fixed_codes.append(code)
-    return fixed_codes
 
 
 async def main() -> None:
@@ -87,7 +72,7 @@ async def main() -> None:
     if not codes:
         logger.print('No codes found in the input file!', LogLevel.FAILED)
         exit(1)
-    codes = fix_codes(codes)
+    codes = code_parser.fix_codes(codes)
 
     # Backup existing output file
     if args.output_file:

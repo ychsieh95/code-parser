@@ -1,0 +1,14 @@
+[Unit]
+Description=Discord Bot of Code Parser
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/holey/.local/bin/code-parser
+ExecStart=/home/holey/.local/bin/code-parser/.venv/bin/python3 -m bots.discord.main.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

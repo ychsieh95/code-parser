@@ -1,7 +1,7 @@
-import cloudscraper
 import os
-import requests
+import re
 import typing
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 
 
@@ -23,21 +23,16 @@ class CodeParser:
 
     @staticmethod
     def get_scraper():
-        return cloudscraper.create_scraper(delay=5, browser={'browser': 'chrome', 'platform': 'windows', 'mobile': False})
+        return requests.Session(impersonate='chrome')
 
     def get_url(self, code: str) -> str:
         return f'{self.video_url_prefix}/{code}'
 
     def get_title(self, code: str) -> ParseStatus:
-        headers = {
-            'Content-Type': 'application/json',
-            'User-Agent'  : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
-                            'Chrome/91.0.4472.124 Safari/537.36',
-            'headerser'   : 'https://google.com'}
-        content = self.scraper.get(f'{self.video_url_prefix}/{code}', proxies=self.proxy, headers=headers)
+        content = self.scraper.get(f'{self.video_url_prefix}/{code}', proxies=self.proxy)
         try:
             content.raise_for_status()
-        except requests.exceptions.HTTPError:
+        except requests.HTTPError:
             return [False, None]
 
         soup = BeautifulSoup(content.text, 'html.parser')
@@ -48,34 +43,44 @@ class CodeParser:
             return [True, None]
 
     def download_cover(self, code: str, cover_save_path: str) -> bool:
-        headers = {
-            'Content-Type': 'application/json',
-            'User-Agent'  : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)'
-                            'Chrome/91.0.4472.124 Safari/537.36',
-            'headerser'   : 'https://google.com'}
         counter = 0
         while True:
             match counter:
                 case 0: # try to download high resolution cover
                     try:
                         movie_cover_link = f'{self.cover_url_prefix}/{code.lower()}/cover-n.jpg'
-                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy, headers=headers)
+                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy)
                         cover.raise_for_status()
                         with open(cover_save_path, 'wb') as f:
                             f.write(cover.content)
                         return True
-                    except requests.exceptions.HTTPError:
+                    except requests.HTTPError:
                         pass
                 case 1: # try to download low resolution cover
                     try:
                         movie_cover_link = f'{self.cover_url_prefix}/{code.lower()}/cover-t.jpg'
-                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy, headers=headers)
+                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy)
                         cover.raise_for_status()
                         with open(cover_save_path, 'wb') as f:
                             f.write(cover.content)
                         return True
-                    except requests.exceptions.HTTPError:
+                    except requests.HTTPError:
                         pass
                 case _: # all attempts failed
                     return False
             counter += 1
+
+    def fix_code(self, code: str) -> str:
+        code = code.strip().upper()
+        if matches:=re.match(r'^([a-zA-Z]{2,5})[-]?(\d{3,5})$', code):
+            return f'{matches.group(1)}-{matches.group(2)}'
+        elif matches:=re.match(r'^(FC2)[-]?(PPV)?[-]?(\d+)$', code):
+            return f'FC2-PPV-{matches.group(3)}'
+        else:
+            return code
+
+    def fix_codes(self, codes: list[str]) -> list[str]:
+        fixed_codes = []
+        for code in codes:
+            fixed_codes.append(self.fix_code(code))
+        return fixed_codes
