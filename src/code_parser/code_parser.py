@@ -25,14 +25,17 @@ class CodeParser:
     def get_scraper():
         return requests.Session(impersonate='chrome')
 
-    def get_url(self, code: str) -> str:
+    def get_video_url(self, code: str) -> str:
         return f'{self.video_url_prefix}/{code}'
+
+    def get_cover_url(self, code: str) -> str:
+        return f'{self.cover_url_prefix}/{code}/cover-n.jpg'
 
     def get_title(self, code: str) -> ParseStatus:
         content = self.scraper.get(f'{self.video_url_prefix}/{code}', proxies=self.proxy)
         try:
             content.raise_for_status()
-        except requests.HTTPError:
+        except requests.exceptions.HTTPError:
             return [False, None]
 
         soup = BeautifulSoup(content.text, 'html.parser')
@@ -54,7 +57,7 @@ class CodeParser:
                         with open(cover_save_path, 'wb') as f:
                             f.write(cover.content)
                         return True
-                    except requests.HTTPError:
+                    except requests.exceptions.HTTPError:
                         pass
                 case 1: # try to download low resolution cover
                     try:
@@ -64,7 +67,7 @@ class CodeParser:
                         with open(cover_save_path, 'wb') as f:
                             f.write(cover.content)
                         return True
-                    except requests.HTTPError:
+                    except requests.exceptions.HTTPError:
                         pass
                 case _: # all attempts failed
                     return False

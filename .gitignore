@@ -1,4 +1,17 @@
-__pycache__/*
-.venv/*
-config/*
-covers/*
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Config (contains secrets/tokens)
+config/settings.py
+
+# Downloaded assets
+assets/covers/
+
+# IDE
+.vscode/
+.idea/

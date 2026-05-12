@@ -5,7 +5,7 @@ from config.settings import COVER_SAVE_DIR, DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TO
 from datetime import datetime
 from src.code_parser.code_parser import CodeParser
 from src.code_parser.discord_webhooker import DiscordWebhooker
-from src.code_parser.logger import Logger, LogLevel
+from utils.logger import Logger, LogLevel
 from src.code_parser.telegram_bot import TelegramBot
 
 
