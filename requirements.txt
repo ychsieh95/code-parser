@@ -1,6 +1,7 @@
 beautifulsoup4
 curl_cffi
-discord
-discord
+discord.py
+discord-webhook
 httpx
+python-telegram-bot
 requests
