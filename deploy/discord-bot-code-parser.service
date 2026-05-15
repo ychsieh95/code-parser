@@ -5,8 +5,8 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-WorkingDirectory=/home/holey/.local/bin/code-parser
-ExecStart=/home/holey/.local/bin/code-parser/.venv/bin/python3 -m bots.discord.main.py
+WorkingDirectory=%h/.local/bin/code-parser
+ExecStart=%h/.local/bin/code-parser/.venv/bin/python3 -m bots.discord.main
 Restart=always
 RestartSec=5
 
