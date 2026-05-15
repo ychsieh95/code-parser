@@ -11,6 +11,14 @@ config/settings.py
 
 # Downloaded assets
 assets/covers/
+covers/
+
+# Log and backup files
+*.log
+*.bak-*
+
+# Discord bot runtime config
+bots/discord/config/
 
 # IDE
 .vscode/

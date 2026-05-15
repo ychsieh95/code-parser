@@ -1,42 +1,49 @@
 # Discord Bot
 
-A Discord bot that listens for video codes in designated channels, looks up the title via `CodeParser`, downloads the cover image, and posts a formatted message.
+A Discord bot that monitors channels for video/comic codes, looks up titles and cover images, and posts formatted results.
 
 ## How It Works
 
-1. A user posts a code (e.g. `ssis-531`) in an allowed channel.
-2. The bot normalises the code via `CodeParser.fix_code()`.
-3. The user's original message is deleted.
-4. The bot fetches the title from `missav.ws` and downloads the cover from `fourhoi.com`.
-5. It replies with the title as a bold markdown link, attaching the cover image if available.
+1. Enable a parsing mode for a channel via slash command.
+2. A user posts a code (e.g. `SSIS-531` or `123456`) in that channel.
+3. The bot deletes the original message.
+4. The bot fetches the title and downloads the cover image.
+5. It replies with a bold markdown link and attaches the cover if available.
 
-## Configuration
+Channel settings are persisted in `config/channel_settings.json` and restored on restart.
 
-Edit the constants at the top of `bot.py`:
+## Slash Commands
 
-| Constant             | Description                                      |
-|----------------------|--------------------------------------------------|
-| `BOT_TOKEN`          | Discord bot token                                |
-| `ALLOWED_CHANNEL_IDS`| Set of channel IDs the bot will respond in       |
-| `PAGE_URL`           | URL template for the video page                  |
-| `COVER_URL`          | URL template for the cover image                 |
+| Command | Permission | Description |
+|---|---|---|
+| `/enable_parse_code` | Manage Channels | Enable video code parsing for this channel |
+| `/enable_parse_comic` | Manage Channels | Enable comic code parsing for this channel |
+| `/disable_parse_code` | Manage Channels | Disable video code parsing for this channel |
+| `/disable_parse_comic` | Manage Channels | Disable comic code parsing for this channel |
+| `/status` | Everyone | Show active parsing modes for this channel |
 
-`COVER_SAVE_DIR` is read from `config/configs.py` (default: `./covers`).
+A channel can have both modes active at the same time. Code mode is checked first.
 
 ## Running
 
 ```bash
 source .venv/bin/activate
-python3 -m bot.discord.bot
+python3 -m bots.discord.main
 ```
 
-## Required Permissions
+## Required Bot Permissions
 
-The bot requires the following Discord permissions:
-
-- **Read Messages / View Channels** — to receive messages
-- **Send Messages** — to post the result
-- **Manage Messages** — to delete the user's original message
-- **Attach Files** — to send the cover image
+- **Read Messages / View Channels** — receive messages
+- **Send Messages** — post results
+- **Manage Messages** — delete the user's original message
+- **Attach Files** — send cover images
 
 Enable the **Message Content Intent** in the Discord Developer Portal under your application's *Bot* settings.
+
+## Configuration
+
+`BOT_TOKEN` is read from `config/settings.py` at the project root.
+
+```python
+BOT_TOKEN = "your-token-here"
+```
