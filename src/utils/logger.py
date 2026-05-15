@@ -14,9 +14,19 @@ class LogLevel(IntEnum):
     DEBUG  = 5
 
 
+_LEVEL_COLORS: dict[int, str] = {
+    LogLevel.INFO  : "\033[34m",  # blue
+    LogLevel.WARN  : "\033[33m",  # yellow
+    LogLevel.FAILED: "\033[31m",  # red
+    LogLevel.OK    : "\033[32m",  # green
+}
+_RESET = "\033[0m"
+
+
 class Logger:
-    def __init__(self, filepath: str = None, display_line_num: int = 20, reserve_line_num: int = 2):
+    def __init__(self, filepath: str = None, clear_previous: bool = True, display_line_num: int = 20, reserve_line_num: int = 2):
         self.filepath         = filepath
+        self.clear_previous   = clear_previous
         self.display_line_num = display_line_num
         self.reserve_line_num = reserve_line_num
         self.logs             = []
@@ -31,9 +41,12 @@ class Logger:
             with open(self.filepath, 'a') as f:
                 f.write(message + '\n')
 
+        color   = _LEVEL_COLORS.get(level, '')
+        display = f'{color}{message}{_RESET}' if color else message
+
         if self.reserve_line_num != 0 and len(self.logs) == 0:
             self.logs.append('-' * 100)
-        self.logs.append(message)
+        self.logs.append(display)
         if self.reserve_line_num != 0 and len(self.logs) == self.reserve_line_num + 1:
             self.logs.append('-' * 100)
 
@@ -55,7 +68,8 @@ class Logger:
                 _ = system('clear')
 
     def __display(self):
-        self.__clear()
+        if self.clear_previous:
+            self.__clear()
         for log in self.logs:
             print(log)
 
@@ -78,9 +92,12 @@ class LoggerV2:
             with open(self.filepath, 'a') as f:
                 f.write(message + '\n')
 
-        if always_top                        : self.top_logs   .append(message)
-        else                                 : self.normal_logs.append(message)
-        if always_top and show_top_and_normal: self.normal_logs.append(message)
+        color   = _LEVEL_COLORS.get(level, '')
+        display = f'{color}{message}{_RESET}' if color else message
+
+        if always_top                        : self.top_logs   .append(display)
+        else                                 : self.normal_logs.append(display)
+        if always_top and show_top_and_normal: self.normal_logs.append(display)
 
         self.display_logs = []
         if self.top_logs:
