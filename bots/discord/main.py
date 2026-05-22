@@ -163,13 +163,26 @@ async def on_message(message: discord.Message):
     if not active_modes:
         return
 
-    code = message.content.strip()
-    logger.print(f'Received message: "{code}" from {message.author} in #{message.channel.name}', LogLevel.INFO)
+    lines = [line.strip() for line in message.content.splitlines() if line.strip()]
+    logger.print(f'Received {len(lines)} line(s) from {message.author} in #{message.channel.name}', LogLevel.INFO)
 
-    if MODE_CODE in active_modes and _is_valid_code(code):
-        await _handle_code(message, code_parser.fix_code(code))
-    elif MODE_COMIC in active_modes and comic_parser.get_comic_type(code) != ComicType.UNKNOWN:
-        await _handle_comic(message, code, comic_parser.get_comic_type(code))
+    tasks = []
+    for line in lines:
+        if MODE_CODE in active_modes and _is_valid_code(line):
+            tasks.append(('code', line))
+        elif MODE_COMIC in active_modes and comic_parser.get_comic_type(line) != ComicType.UNKNOWN:
+            tasks.append(('comic', line))
+
+    if not tasks:
+        return
+
+    await _delete_message(message)
+
+    for kind, line in tasks:
+        if kind == 'code':
+            await _handle_code(message, code_parser.fix_code(line))
+        else:
+            await _handle_comic(message, line, comic_parser.get_comic_type(line))
 
 
 async def _delete_message(message: discord.Message):
@@ -185,7 +198,6 @@ async def _handle_code(message: discord.Message, code: str):
     page_url   = code_parser.get_video_url(code)
     cover_path = f'{COVER_SAVE_DIR["code"]}/{code}.jpg'
 
-    await _delete_message(message)
     os.makedirs(COVER_SAVE_DIR['code'], exist_ok=True)
 
     title_flag, title = await asyncio.to_thread(code_parser.get_title, code)
@@ -216,7 +228,6 @@ async def _handle_comic(message: discord.Message, code: str, comic_type: ComicTy
     page_url   = parser.get_comic_url(code)
     cover_path = f'{COVER_SAVE_DIR["comic"]}/{code}.jpg'
 
-    await _delete_message(message)
     os.makedirs(COVER_SAVE_DIR['comic'], exist_ok=True)
 
     title_flag, title = await asyncio.to_thread(parser.get_title, code)
