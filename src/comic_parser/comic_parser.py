@@ -93,6 +93,7 @@ class NhentaiComicParser(ComicParser):
         except requests.exceptions.HTTPError:
             return False
 
+
 class WnacgComicParser(ComicParser):
     pass
 

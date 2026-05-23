@@ -20,7 +20,11 @@ MODE_COMIC = "comic"
 
 COVER_SAVE_DIR = {
     'code'  : './assets/covers/code',
-    'comic' : './assets/covers/comics'
+    'comic' : {
+        ComicType.NHENTAI: './assets/covers/comics/nhentai',
+        ComicType.WNACG  : './assets/covers/comics/wnacg',
+        ComicType.JM     : './assets/covers/comics/JM',
+    }
 }
 SETTINGS_FILE = Path(__file__).parent / "config/channel_settings.json"
 
@@ -226,9 +230,10 @@ async def _handle_comic(message: discord.Message, code: str, comic_type: ComicTy
             return
 
     page_url   = parser.get_comic_url(code)
-    cover_path = f'{COVER_SAVE_DIR["comic"]}/{code}.jpg'
+    comic_dir  = COVER_SAVE_DIR['comic'][comic_type]
+    cover_path = f'{comic_dir}/{code}.jpg'
 
-    os.makedirs(COVER_SAVE_DIR['comic'], exist_ok=True)
+    os.makedirs(comic_dir, exist_ok=True)
 
     title_flag, title = await asyncio.to_thread(parser.get_title, code)
     has_cover         = await asyncio.to_thread(parser.download_cover, code, cover_path)

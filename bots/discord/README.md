@@ -10,12 +10,12 @@ A Discord bot that monitors channels for video/comic codes, looks up titles and 
 4. The bot fetches the title and downloads the cover image.
 5. It replies with a bold markdown link and attaches the cover if available.
 
-Channel settings are persisted in `config/channel_settings.json` and restored on restart.
+Channel settings are persisted in `bots/discord/config/channel_settings.json` (gitignored, created automatically) and restored on restart.
 
 ## Slash Commands
 
 | Command | Permission | Description |
-|---|---|---|
+| --- | --- | --- |
 | `/enable_parse_code` | Manage Channels | Enable video code parsing for this channel |
 | `/enable_parse_comic` | Manage Channels | Enable comic code parsing for this channel |
 | `/disable_parse_code` | Manage Channels | Disable video code parsing for this channel |
@@ -42,8 +42,8 @@ Enable the **Message Content Intent** in the Discord Developer Portal under your
 
 ## Configuration
 
-`BOT_TOKEN` is read from `config/settings.py` at the project root.
+`BOT_TOKEN` is read from `config/settings.py` at the project root. Copy the example and fill in your token:
 
-```python
-BOT_TOKEN = "your-token-here"
+```bash
+cp config/settings.example.py config/settings.py
 ```
