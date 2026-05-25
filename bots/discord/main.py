@@ -136,6 +136,32 @@ async def cmd_disable_parse_comic(interaction: discord.Interaction):
         await interaction.response.send_message('Comic parsing is not enabled for this channel.', ephemeral=True)
 
 
+@tree.command(name='updatelog', description='Show recent bot update history')
+async def cmd_updatelog(interaction: discord.Interaction):
+    embed = discord.Embed(title='Update Log', color=discord.Color.green())
+    embed.add_field(
+        name='Latest',
+        value=(
+            '• Added `/help` command\n'
+            '• Invalid code/comic input now deletes message and notifies user\n'
+            '• Empty messages in active channels are now caught and reported\n'
+            '• WNACG / JM comic types report "not supported yet" instead of silent failure'
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name='Previous',
+        value=(
+            '• Multi-line message support: each line is parsed independently\n'
+            '• Added slash commands for enabling/disabling parse modes\n'
+            '• Comic parser added (nhentai support)\n'
+            '• Logger color support for log levels'
+        ),
+        inline=False
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 @tree.command(name='help', description='Show available commands and usage')
 async def cmd_help(interaction: discord.Interaction):
     embed = discord.Embed(title='Bot Commands', color=discord.Color.blurple())
@@ -200,6 +226,12 @@ async def on_message(message: discord.Message):
         return
 
     lines = [line.strip() for line in message.content.splitlines() if line.strip()]
+
+    if not lines:
+        await _delete_message(message)
+        await message.channel.send(f'{message.author.mention} Invalid input: message contains no valid content.')
+        return
+
     logger.print(f'Received {len(lines)} line(s) from {message.author} in #{message.channel.name}', LogLevel.INFO)
 
     tasks    = []
@@ -207,22 +239,23 @@ async def on_message(message: discord.Message):
     for line in lines:
         logger.print(f'Processing line: "{line}"', LogLevel.INFO)
         if MODE_CODE in active_modes and _is_valid_code(line):
-            tasks.append(('code', line))
-        elif MODE_COMIC in active_modes and comic_parser.get_comic_type(line) != ComicType.UNKNOWN:
-            tasks.append(('comic', line))
+            tasks.append(('code', line, None))
+        elif MODE_COMIC in active_modes:
+            comic_type = comic_parser.get_comic_type(line)
+            if comic_type != ComicType.UNKNOWN:
+                tasks.append(('comic', line, comic_type))
+            else:
+                failures.append(line)
         else:
             failures.append(line)
 
-    if not tasks and not failures:
-        return
-
     await _delete_message(message)
 
-    for kind, line in tasks:
+    for kind, line, extra in tasks:
         if kind == 'code':
             await _handle_code(message, code_parser.fix_code(line))
         else:
-            await _handle_comic(message, line, comic_parser.get_comic_type(line))
+            await _handle_comic(message, line, extra)
 
     for line in failures:
         if MODE_CODE in active_modes:
@@ -271,6 +304,9 @@ async def _handle_comic(message: discord.Message, code: str, comic_type: ComicTy
     match comic_type:
         case ComicType.NHENTAI:
             parser = NhentaiComicParser()
+        case ComicType.WNACG | ComicType.JM:
+            await message.channel.send(content=f'`{code}` ({comic_type.name}) is not supported yet.')
+            return
         case _:
             logger.print(f'Unsupported comic type for code "{code}"', LogLevel.WARN)
             await message.channel.send(content=f'Unsupported comic code "{code}"')
