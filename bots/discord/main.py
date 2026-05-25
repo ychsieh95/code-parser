@@ -136,6 +136,38 @@ async def cmd_disable_parse_comic(interaction: discord.Interaction):
         await interaction.response.send_message('Comic parsing is not enabled for this channel.', ephemeral=True)
 
 
+@tree.command(name='help', description='Show available commands and usage')
+async def cmd_help(interaction: discord.Interaction):
+    embed = discord.Embed(title='Bot Commands', color=discord.Color.blurple())
+    embed.add_field(
+        name='Admin Commands',
+        value=(
+            '`/enable_parse_code` — Enable video code parsing for this channel\n'
+            '`/disable_parse_code` — Disable video code parsing for this channel\n'
+            '`/enable_parse_comic` — Enable comic code parsing for this channel\n'
+            '`/disable_parse_comic` — Disable comic code parsing for this channel'
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name='General Commands',
+        value=(
+            '`/status` — Show active parsing modes for this channel\n'
+            '`/help` — Show this help message'
+        ),
+        inline=False
+    )
+    embed.add_field(
+        name='How It Works',
+        value=(
+            'When a parsing mode is enabled, the bot automatically detects matching codes in messages, '
+            'deletes the original, and posts a formatted result with title and cover.'
+        ),
+        inline=False
+    )
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+
 @tree.command(name='status', description='Show current parsing status for this channel')
 async def cmd_status(interaction: discord.Interaction):
     modes = channel_modes.get(interaction.channel_id, set())
@@ -170,14 +202,18 @@ async def on_message(message: discord.Message):
     lines = [line.strip() for line in message.content.splitlines() if line.strip()]
     logger.print(f'Received {len(lines)} line(s) from {message.author} in #{message.channel.name}', LogLevel.INFO)
 
-    tasks = []
+    tasks    = []
+    failures = []
     for line in lines:
+        logger.print(f'Processing line: "{line}"', LogLevel.INFO)
         if MODE_CODE in active_modes and _is_valid_code(line):
             tasks.append(('code', line))
         elif MODE_COMIC in active_modes and comic_parser.get_comic_type(line) != ComicType.UNKNOWN:
             tasks.append(('comic', line))
+        else:
+            failures.append(line)
 
-    if not tasks:
+    if not tasks and not failures:
         return
 
     await _delete_message(message)
@@ -187,6 +223,17 @@ async def on_message(message: discord.Message):
             await _handle_code(message, code_parser.fix_code(line))
         else:
             await _handle_comic(message, line, comic_parser.get_comic_type(line))
+
+    for line in failures:
+        if MODE_CODE in active_modes:
+            await message.channel.send(
+                f'{message.author.mention} `{line}` is not a valid code format. '
+                'Expected formats: `ABC-123`, `FC2-PPV-123456`, etc.'
+            )
+        elif MODE_COMIC in active_modes:
+            await message.channel.send(
+                f'{message.author.mention} `{line}` is not a recognized comic code.'
+            )
 
 
 async def _delete_message(message: discord.Message):
