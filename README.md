@@ -1,10 +1,12 @@
 # Code Parser
 
+![Code Parser](assets/bot-banner.png)
+
 A Python toolkit for parsing video/comic codes — fetches titles and cover images, sends notifications to Discord and Telegram, and includes a Discord bot for channel-based monitoring.
 
 ## Features
 
-- Parse one or more codes from command-line arguments or an input file
+- Parse one or more video codes from command-line arguments or an input file
 - Normalize common code formats (e.g. `abc123` → `ABC-123`, `FC2PPV12345` → `FC2-PPV-12345`)
 - Download cover images
 - Send results to a Discord webhook and/or Telegram channel
@@ -16,8 +18,16 @@ A Python toolkit for parsing video/comic codes — fetches titles and cover imag
 
 ```text
 code-parser/
+├── assets/
+│   └── covers/
+│       ├── code/               # Downloaded video covers
+│       └── comics/
+│           ├── nhentai/
+│           ├── wnacg/
+│           └── JM/
 ├── bots/
 │   └── discord/
+│       ├── config/             # channel_settings.json (auto-created, gitignored)
 │       ├── main.py             # Discord bot entry point
 │       └── README.md
 ├── config/
@@ -25,7 +35,7 @@ code-parser/
 ├── deploy/
 │   └── discord-bot-code-parser.service
 ├── scripts/
-│   └── cli.py                  # CLI entry point
+│   └── cli.py                  # CLI entry point (video codes)
 ├── src/
 │   ├── code_parser/
 │   │   ├── code_parser.py      # Video code scraping & cover download
@@ -68,17 +78,19 @@ Copy the example config and fill in your values:
 cp config/settings.example.py config/settings.py
 ```
 
-| Key                  | Description                        |
-|----------------------|------------------------------------|
-| `BOT_TOKEN`          | Discord bot token                  |
-| `DISCORD_WEBHOOK_URL`| Discord webhook URL                |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token                 |
-| `TELEGRAM_CHANNEL_ID`| Telegram channel ID                |
-| `COVER_SAVE_DIR`     | Paths for downloaded cover images  |
+| Key                  | Description                                          |
+|----------------------|------------------------------------------------------|
+| `BOT_TOKEN`          | Discord bot token (used by the Discord bot)          |
+| `DISCORD_WEBHOOK_URL`| Discord webhook URL (used by the CLI)                |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (used by the CLI)                 |
+| `TELEGRAM_CHANNEL_ID`| Telegram channel ID (used by the CLI)                |
+| `COVER_SAVE_DIR`     | Paths for downloaded cover images                    |
 
 > `config/settings.py` is gitignored — never commit it.
 
 ## CLI Usage
+
+The CLI handles video codes. Comic parsing is available through the Discord bot.
 
 ```bash
 # Parse codes directly
@@ -108,8 +120,10 @@ python3 -m bots.discord.main
 ## Notes
 
 - Proxy support via `http_proxy` / `https_proxy` environment variables.
-- Covers are saved as `.jpg` files under `assets/covers/code/` (video) and `assets/covers/comics/` (comic).
+- Video covers are saved as `.jpg` under `assets/covers/code/`.
+- Comic covers are saved under `assets/covers/comics/{nhentai,wnacg,JM}/`.
 - Output files are backed up with a `.bak-YYYYMMDD_HHMMSS` suffix before being overwritten.
+- Discord bot channel settings persist in `bots/discord/config/channel_settings.json` and are restored on restart.
 
 ## License
 

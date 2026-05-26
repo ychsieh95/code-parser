@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" width="680" height="240">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f1020"/>
+      <stop offset="55%" style="stop-color:#1a1b2e"/>
+      <stop offset="100%" style="stop-color:#22243a"/>
+    </linearGradient>
+    <linearGradient id="tealGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4aa"/>
+      <stop offset="100%" style="stop-color:#00a87e"/>
+    </linearGradient>
+    <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#7289da;stop-opacity:0"/>
+      <stop offset="25%" style="stop-color:#7289da;stop-opacity:1"/>
+      <stop offset="75%" style="stop-color:#00d4aa;stop-opacity:1"/>
+      <stop offset="100%" style="stop-color:#00d4aa;stop-opacity:0"/>
+    </linearGradient>
+    <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ffffff"/>
+      <stop offset="70%" style="stop-color:#e8eaf6"/>
+      <stop offset="100%" style="stop-color:#00d4aa"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="glowSoft">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="6" stdDeviation="14" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="540" fill="url(#bgGrad)"/>
+
+  <!-- Ambient glows -->
+  <circle cx="160" cy="270" r="260" fill="#7289da" opacity="0.04"/>
+  <circle cx="800" cy="270" r="220" fill="#00d4aa" opacity="0.05"/>
+
+  <!-- ── LEFT SIDE: Film strip ── -->
+  <g transform="translate(60, 80)" filter="url(#shadow)" opacity="0.9">
+    <rect x="0" y="0" width="160" height="380" rx="10" fill="#0d0e1a"/>
+    <rect x="0" y="0" width="160" height="380" rx="10" fill="none" stroke="#7289da" stroke-width="2.5"/>
+    <!-- Perforations top row -->
+    <rect x="10" y="10" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="40" y="10" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="70" y="10" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="100" y="10" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="130" y="10" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <!-- Perforations bottom row -->
+    <rect x="10" y="354" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="40" y="354" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="70" y="354" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="100" y="354" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <rect x="130" y="354" width="22" height="16" rx="4" fill="#7289da" opacity="0.6"/>
+    <!-- Frame 1 -->
+    <rect x="12" y="36" width="136" height="96" rx="4" fill="#13141f"/>
+    <polygon points="60,64 60,108 106,86" fill="#7289da" opacity="0.5"/>
+    <!-- Frame 2 -->
+    <rect x="12" y="142" width="136" height="96" rx="4" fill="#13141f"/>
+    <polygon points="60,170 60,214 106,192" fill="#7289da" opacity="0.4"/>
+    <!-- Frame 3 -->
+    <rect x="12" y="248" width="136" height="96" rx="4" fill="#13141f"/>
+    <polygon points="60,276 60,320 106,298" fill="#7289da" opacity="0.35"/>
+  </g>
+
+  <!-- AV URL tag floating left -->
+  <g transform="translate(82, 490)" filter="url(#glowSoft)">
+    <rect x="-10" y="-20" width="140" height="40" rx="10" fill="#0d0e1a" stroke="#7289da" stroke-width="2"/>
+    <rect x="2" y="-8" width="14" height="16" rx="4" fill="none" stroke="#7289da" stroke-width="2"/>
+    <rect x="12" y="-8" width="14" height="16" rx="4" fill="none" stroke="#7289da" stroke-width="2"/>
+    <text x="82" y="6" font-family="'Courier New', monospace" font-size="14" font-weight="bold" fill="#7289da" text-anchor="middle" letter-spacing="1" text-decoration="underline">https://...</text>
+  </g>
+
+  <!-- ── RIGHT SIDE: Comic book stack ── -->
+  <g transform="translate(730, 80)" filter="url(#shadow)" opacity="0.9">
+    <!-- Book 3 (back) -->
+    <rect x="20" y="20" width="150" height="200" rx="6" fill="#1a0a2e" transform="rotate(8, 95, 120)"/>
+    <!-- Book 2 (mid) -->
+    <rect x="10" y="10" width="150" height="200" rx="6" fill="#220d3a" transform="rotate(4, 85, 110)"/>
+    <!-- Book 1 (front) -->
+    <rect x="0" y="0" width="150" height="200" rx="6" fill="#13141f" stroke="#00d4aa" stroke-width="2.5"/>
+    <!-- Spine -->
+    <rect x="0" y="0" width="14" height="200" rx="6" fill="#00d4aa" opacity="0.85"/>
+    <!-- Panel grid -->
+    <rect x="22" y="12" width="118" height="68" rx="3" fill="#0d0e1a"/>
+    <rect x="22" y="88" width="55" height="100" rx="3" fill="#0d0e1a"/>
+    <rect x="83" y="88" width="57" height="100" rx="3" fill="#0d0e1a"/>
+    <!-- Action star -->
+    <polygon points="126,42 130,32 134,42 144,38 138,46 148,52 138,52 138,62 130,56 126,66 126,56 116,52" fill="#febc2e" opacity="0.75"/>
+
+    <!-- Book stack continues down -->
+    <rect x="0" y="220" width="150" height="200" rx="6" fill="#13141f" stroke="#00d4aa" stroke-width="2" transform="rotate(-3, 75, 320)"/>
+    <rect x="0" y="220" width="14" height="200" rx="6" fill="#00d4aa" opacity="0.7" transform="rotate(-3, 75, 320)"/>
+    <rect x="22" y="232" width="118" height="68" rx="3" fill="#0d0e1a" transform="rotate(-3, 75, 320)"/>
+  </g>
+
+  <!-- Comic URL tag floating right -->
+  <g transform="translate(830, 490)" filter="url(#glowSoft)">
+    <rect x="-70" y="-20" width="140" height="40" rx="10" fill="#0d0e1a" stroke="#00d4aa" stroke-width="2"/>
+    <rect x="-58" y="-8" width="14" height="16" rx="4" fill="none" stroke="#00d4aa" stroke-width="2"/>
+    <rect x="-48" y="-8" width="14" height="16" rx="4" fill="none" stroke="#00d4aa" stroke-width="2"/>
+    <text x="18" y="6" font-family="'Courier New', monospace" font-size="14" font-weight="bold" fill="#00d4aa" text-anchor="middle" letter-spacing="1" text-decoration="underline">https://...</text>
+  </g>
+
+  <!-- ── CENTER BRANDING ── -->
+
+  <!-- Magnifying glass -->
+  <g filter="url(#glow)" transform="translate(480, 168)">
+    <circle cx="0" cy="0" r="72" fill="#13141f" stroke="url(#tealGrad)" stroke-width="13"/>
+    <!-- Shine -->
+    <circle cx="-22" cy="-22" r="20" fill="none" stroke="#fff" stroke-width="3" opacity="0.08"/>
+    <!-- Handle -->
+    <line x1="52" y1="52" x2="90" y2="90" stroke="url(#tealGrad)" stroke-width="17" stroke-linecap="round"/>
+    <!-- Code tag inside glass -->
+    <rect x="-54" y="-18" width="108" height="36" rx="9" fill="#0d0e1a" stroke="#7289da" stroke-width="2.5"/>
+    <circle cx="-44" cy="0" r="5.5" fill="#1a1b2e" stroke="#7289da" stroke-width="2"/>
+    <text x="4" y="7" font-family="'Courier New', monospace" font-size="14" font-weight="bold" fill="#7289da" text-anchor="middle" letter-spacing="1">ABC-123</text>
+  </g>
+
+  <!-- Title -->
+  <text x="480" y="308" font-family="'Arial Black', Arial, sans-serif" font-size="66" font-weight="900" fill="url(#titleGrad)" text-anchor="middle" filter="url(#glow)">Code Parser</text>
+
+  <!-- Accent divider -->
+  <rect x="180" y="323" width="600" height="3" rx="1.5" fill="url(#accentLine)"/>
+
+  <!-- Subtitle -->
+  <text x="480" y="362" font-family="Arial, sans-serif" font-size="18" fill="#8e9ac8" text-anchor="middle" letter-spacing="5">AV  &amp;  COMIC  CODE  LOOKUP  BOT</text>
+
+  <!-- Feature tags row -->
+  <g transform="translate(480, 412)">
+    <rect x="-290" y="-18" width="152" height="36" rx="18" fill="#7289da" fill-opacity="0.15" stroke="#7289da" stroke-width="1.2" stroke-opacity="0.6"/>
+    <text x="-214" y="6" font-family="Arial, sans-serif" font-size="14" fill="#7289da" text-anchor="middle">ABC-123 / FC2-PPV</text>
+
+    <rect x="-62" y="-18" width="124" height="36" rx="18" fill="#00d4aa" fill-opacity="0.12" stroke="#00d4aa" stroke-width="1.2" stroke-opacity="0.6"/>
+    <text x="0" y="6" font-family="Arial, sans-serif" font-size="14" fill="#00d4aa" text-anchor="middle">nhentai / WNACG</text>
+
+    <rect x="138" y="-18" width="152" height="36" rx="18" fill="#ff7eb6" fill-opacity="0.12" stroke="#ff7eb6" stroke-width="1.2" stroke-opacity="0.5"/>
+    <text x="214" y="6" font-family="Arial, sans-serif" font-size="14" fill="#ff7eb6" text-anchor="middle">Discord Webhook</text>
+  </g>
+
+  <!-- Floating code tags - scattered background deco -->
+  <g opacity="0.18">
+    <g transform="translate(250, 120)">
+      <rect x="-48" y="-14" width="96" height="28" rx="7" fill="none" stroke="#7289da" stroke-width="1.5"/>
+      <text x="0" y="5" font-family="'Courier New', monospace" font-size="12" fill="#7289da" text-anchor="middle">FC2-PPV-456</text>
+    </g>
+    <g transform="translate(700, 490)">
+      <rect x="-40" y="-14" width="80" height="28" rx="7" fill="none" stroke="#febc2e" stroke-width="1.5"/>
+      <text x="0" y="5" font-family="'Courier New', monospace" font-size="12" fill="#febc2e" text-anchor="middle">JM-78901</text>
+    </g>
+    <g transform="translate(310, 500)">
+      <rect x="-36" y="-14" width="72" height="28" rx="7" fill="none" stroke="#00d4aa" stroke-width="1.5"/>
+      <text x="0" y="5" font-family="'Courier New', monospace" font-size="12" fill="#00d4aa" text-anchor="middle">XYZ-999</text>
+    </g>
+  </g>
+
+  <!-- Bottom bar -->
+  <rect x="0" y="526" width="960" height="14" fill="url(#accentLine)" opacity="0.45"/>
+</svg>
