@@ -13,14 +13,14 @@ A Python toolkit for parsing video/comic codes — fetches titles and cover imag
 - Save results to an output file (existing files are backed up automatically)
 - Discord bot with per-channel slash commands for live code/comic monitoring
 - Bot slash commands: `/enable_parse_code`, `/enable_parse_comic`, `/disable_parse_code`, `/disable_parse_comic`, `/status`, `/help`, `/updatelog`
-- Comic support: nhentai (`123456` / `n123456`); WNACG and JM codes are recognized but not yet implemented
+- Comic support: nhentai (`123456` / `n123456`); WNACG (`w123456`) and JM (`j123456` / `jm123456`) codes are recognized but not yet implemented
 
 ## Project Structure
 
 ```text
 code-parser/
 ├── assets/
-│   ├── images/                 # Banner and icon assets
+│   ├── images/                 # Banner and icon assets (banner.png, icon.png, icon-2.png)
 │   └── covers/
 │       ├── code/               # Downloaded video covers
 │       └── comics/
@@ -118,6 +118,8 @@ See [bots/discord/README.md](bots/discord/README.md) for setup and usage.
 source .venv/bin/activate
 python3 -m bots.discord.main
 ```
+
+The bot requires these Discord permissions: **Read Messages**, **Send Messages**, **Manage Messages** (to delete the user's original message), and **Attach Files**. Enable the **Message Content Intent** in the Discord Developer Portal.
 
 ## Notes
 
