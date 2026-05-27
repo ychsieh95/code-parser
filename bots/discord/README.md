@@ -21,6 +21,8 @@ Channel settings are persisted in `bots/discord/config/channel_settings.json` (g
 | `/disable_parse_code` | Manage Channels | Disable video code parsing for this channel |
 | `/disable_parse_comic` | Manage Channels | Disable comic code parsing for this channel |
 | `/status` | Everyone | Show active parsing modes for this channel |
+| `/help` | Everyone | Show available commands and usage |
+| `/updatelog` | Everyone | Show recent bot update history |
 
 A channel can have both modes active at the same time. Code mode is checked first.
 

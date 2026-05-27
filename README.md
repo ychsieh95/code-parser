@@ -1,6 +1,6 @@
 # Code Parser
 
-![Code Parser](assets/bot-banner.png)
+![Code Parser](assets/images/banner.png)
 
 A Python toolkit for parsing video/comic codes — fetches titles and cover images, sends notifications to Discord and Telegram, and includes a Discord bot for channel-based monitoring.
 
@@ -12,6 +12,7 @@ A Python toolkit for parsing video/comic codes — fetches titles and cover imag
 - Send results to a Discord webhook and/or Telegram channel
 - Save results to an output file (existing files are backed up automatically)
 - Discord bot with per-channel slash commands for live code/comic monitoring
+- Bot slash commands: `/enable_parse_code`, `/enable_parse_comic`, `/disable_parse_code`, `/disable_parse_comic`, `/status`, `/help`, `/updatelog`
 - Comic support: nhentai (`123456` / `n123456`); WNACG and JM codes are recognized but not yet implemented
 
 ## Project Structure
@@ -19,6 +20,7 @@ A Python toolkit for parsing video/comic codes — fetches titles and cover imag
 ```text
 code-parser/
 ├── assets/
+│   ├── images/                 # Banner and icon assets
 │   └── covers/
 │       ├── code/               # Downloaded video covers
 │       └── comics/
@@ -31,7 +33,7 @@ code-parser/
 │       ├── main.py             # Discord bot entry point
 │       └── README.md
 ├── config/
-│   └── settings.example.py    # Configuration template (copy to settings.py)
+│   └── settings.example.py     # Configuration template (copy to settings.py)
 ├── deploy/
 │   └── discord-bot-code-parser.service
 ├── scripts/

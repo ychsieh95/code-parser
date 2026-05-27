@@ -142,20 +142,19 @@ async def cmd_updatelog(interaction: discord.Interaction):
     embed.add_field(
         name='Latest',
         value=(
-            '• Added `/help` command\n'
-            '• Invalid code/comic input now deletes message and notifies user\n'
-            '• Empty messages in active channels are now caught and reported\n'
-            '• WNACG / JM comic types report "not supported yet" instead of silent failure'
+            '• Added `/updatelog` command\n'
+            '• Moved banner and icon assets to `assets/images/`\n'
+            '• README updated with full slash command reference'
         ),
         inline=False
     )
     embed.add_field(
         name='Previous',
         value=(
-            '• Multi-line message support: each line is parsed independently\n'
-            '• Added slash commands for enabling/disabling parse modes\n'
-            '• Comic parser added (nhentai support)\n'
-            '• Logger color support for log levels'
+            '• Added `/help` command\n'
+            '• Invalid code/comic input now deletes message and notifies user\n'
+            '• Empty messages in active channels are now caught and reported\n'
+            '• WNACG / JM comic types report "not supported yet" instead of silent failure'
         ),
         inline=False
     )
