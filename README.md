@@ -1,62 +1,42 @@
-# Code Parser
+# code-parser
 
-![Code Parser](assets/images/banner.png)
+A Discord bot and CLI tool that detects video/comic codes in messages, fetches titles and cover images, and posts formatted results.
 
-A Python toolkit for parsing video/comic codes — fetches titles and cover images, sends notifications to Discord and Telegram, and includes a Discord bot for channel-based monitoring.
-
-## Features
-
-- Parse one or more video codes from command-line arguments or an input file
-- Normalize common code formats (e.g. `abc123` → `ABC-123`, `FC2PPV12345` → `FC2-PPV-12345`)
-- Download cover images
-- Send results to a Discord webhook and/or Telegram channel
-- Save results to an output file (existing files are backed up automatically)
-- Discord bot with per-channel slash commands for live code/comic monitoring
-- Bot slash commands: `/enable_parse_code`, `/enable_parse_comic`, `/disable_parse_code`, `/disable_parse_comic`, `/status`, `/help`, `/updatelog`
-- Comic support: nhentai (`123456` / `n123456`); WNACG (`w123456`) and JM (`j123456` / `jm123456`) codes are recognized but not yet implemented
+---
 
 ## Project Structure
 
-```text
+```
 code-parser/
-├── assets/
-│   ├── images/                 # Banner and icon assets (banner.png, icon.png, icon-2.png)
-│   └── covers/
-│       ├── code/               # Downloaded video covers
-│       └── comics/
-│           ├── nhentai/
-│           ├── wnacg/
-│           └── JM/
-├── bots/
-│   └── discord/
-│       ├── config/             # channel_settings.json (auto-created, gitignored)
-│       ├── main.py             # Discord bot entry point
-│       └── README.md
-├── config/
-│   └── settings.example.py     # Configuration template (copy to settings.py)
-├── deploy/
-│   └── discord-bot-code-parser.service
+├── bot/                    # Discord bot
+│   ├── main.py             # Entry point
+│   ├── db.py               # SQLite persistence (channel settings)
+│   └── commands/
+│       ├── admin.py        # Enable/disable parsing, guild status
+│       ├── events.py       # Message handler (on_message)
+│       └── general.py      # /help, /status, /updatelog
+├── utils/                  # Shared utilities
+│   ├── code_parser.py      # Video code scraper (missav.ws)
+│   ├── comic_parser.py     # Comic scraper (nhentai, wnacg, jm)
+│   ├── discord_webhooker.py
+│   ├── telegram_bot.py
+│   └── logger.py
 ├── scripts/
-│   └── cli.py                  # CLI entry point (video codes)
-├── src/
-│   ├── code_parser/
-│   │   ├── code_parser.py      # Video code scraping & cover download
-│   │   ├── discord_webhooker.py
-│   │   └── telegram_bot.py
-│   ├── comic_parser/
-│   │   └── comic_parser.py     # Comic code scraping & cover download
-│   └── utils/
-│       └── logger.py
-├── quick-build.sh              # One-step deploy & systemd setup
-└── requirements.txt
+│   └── cli.py              # Batch CLI for code parsing
+├── config/
+│   ├── settings.py         # Tokens and directory config
+│   └── settings.example.py
+├── assets/
+│   └── images/             # Bot icon and banner
+└── deploy/
+    └── discord-bot-code-parser.service  # systemd unit
 ```
 
-## Requirements
+---
 
-- Python 3.10+
-- Internet access to target sites
+## Setup
 
-## Installation
+**1. Create a virtual environment and install dependencies**
 
 ```bash
 python3 -m venv .venv
@@ -64,71 +44,118 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Quick Deploy (Linux + systemd)
-
-`quick-build.sh` copies the project to `~/.local/bin/code-parser`, creates a virtualenv, installs dependencies, and enables the Discord bot as a user-level systemd service in one step:
-
-```bash
-bash quick-build.sh
-```
-
-## Configuration
-
-Copy the example config and fill in your values:
+**2. Configure settings**
 
 ```bash
 cp config/settings.example.py config/settings.py
 ```
 
-| Key                  | Description                                          |
-|----------------------|------------------------------------------------------|
-| `BOT_TOKEN`          | Discord bot token (used by the Discord bot)          |
-| `DISCORD_WEBHOOK_URL`| Discord webhook URL (used by the CLI)                |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token (used by the CLI)                 |
-| `TELEGRAM_CHANNEL_ID`| Telegram channel ID (used by the CLI)                |
-| `COVER_SAVE_DIR`     | Paths for downloaded cover images                    |
+Edit `config/settings.py` and fill in:
 
-> `config/settings.py` is gitignored — never commit it.
+| Key | Description |
+|---|---|
+| `BOT_TOKEN` | Discord bot token |
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL (CLI notify) |
+| `TELEGRAM_BOT_TOKEN` | Telegram bot token (CLI notify) |
+| `TELEGRAM_CHANNEL_ID` | Telegram channel ID (CLI notify) |
+| `COVER_SAVE_DIR` | Local path to save cover images |
 
-## CLI Usage
-
-The CLI handles video codes. Comic parsing is available through the Discord bot.
-
-```bash
-# Parse codes directly
-python3 -m scripts.cli --codes ABP-123 FC2-PPV-12345
-
-# Parse from a file (one code per line)
-python3 -m scripts.cli --input-file codes.txt
-
-# Send notifications
-python3 -m scripts.cli --codes ABP-123 --notify discord
-python3 -m scripts.cli --codes ABP-123 --notify telegram
-python3 -m scripts.cli --codes ABP-123 --notify all
-
-# Save results to a file
-python3 -m scripts.cli --codes ABP-123 --output-file result.txt
-```
+---
 
 ## Discord Bot
 
-See [bots/discord/README.md](bots/discord/README.md) for setup and usage.
+### Running
 
 ```bash
-source .venv/bin/activate
-python3 -m bots.discord.main
+python3 -m bot.main
 ```
 
-The bot requires these Discord permissions: **Read Messages**, **Send Messages**, **Manage Messages** (to delete the user's original message), and **Attach Files**. Enable the **Message Content Intent** in the Discord Developer Portal.
+For development (instant slash command sync to a single guild):
 
-## Notes
+```bash
+DEV_GUILD_ID=123456789 python3 -m bot.main
+```
 
-- Proxy support via `http_proxy` / `https_proxy` environment variables.
-- Video covers are saved as `.jpg` under `assets/covers/code/`.
-- Comic covers are saved under `assets/covers/comics/{nhentai,wnacg,JM}/`.
-- Output files are backed up with a `.bak-YYYYMMDD_HHMMSS` suffix before being overwritten.
-- Discord bot channel settings persist in `bots/discord/config/channel_settings.json` and are restored on restart.
+### Slash Commands
 
-## License
+**Admin** (requires Administrator permission)
 
-MIT License. See [LICENSE](LICENSE) for details.
+| Command | Description |
+|---|---|
+| `/enable_parse_code` | Enable video code parsing for the current channel |
+| `/disable_parse_code` | Disable video code parsing for the current channel |
+| `/enable_parse_comic` | Enable comic parsing for the current channel |
+| `/disable_parse_comic` | Disable comic parsing for the current channel |
+| `/guild_status` | Show parsing status for all channels in the server |
+
+**General**
+
+| Command | Description |
+|---|---|
+| `/status` | Show active parsing modes for the current channel |
+| `/help` | Show available commands |
+| `/updatelog` | Show recent update history |
+
+### How It Works
+
+When a parsing mode is enabled for a channel, the bot:
+1. Intercepts every message in that channel
+2. Deletes the original message
+3. Looks up the title and cover image for each code
+4. Posts a formatted reply with a link and cover image
+
+**Supported code formats**
+
+| Type | Examples |
+|---|---|
+| Video | `ABC-123`, `ABCD-1234`, `FC2-PPV-123456` |
+| Comic (nhentai) | `123456`, `n123456` |
+| Comic (wnacg) | `w123456` *(not yet supported)* |
+| Comic (JM) | `jm123456` *(not yet supported)* |
+
+### systemd Deployment
+
+Copy the service file and enable it:
+
+```bash
+cp deploy/discord-bot-code-parser.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now discord-bot-code-parser
+```
+
+---
+
+## CLI
+
+Batch-process codes and optionally notify via Discord webhook or Telegram.
+
+```bash
+python3 -m scripts.cli --codes ABC-123 DEF-456
+python3 -m scripts.cli --input-file codes.txt --output-file results.txt
+python3 -m scripts.cli --input-file codes.txt --notify discord
+python3 -m scripts.cli --input-file codes.txt --notify all
+```
+
+**Arguments**
+
+| Argument | Description |
+|---|---|
+| `--codes` | One or more codes to process |
+| `--input-file` | Path to a text file with one code per line |
+| `--output-file` | Path to save results (existing file is backed up) |
+| `--notify` | Send results via `discord`, `telegram`, or `all` |
+
+---
+
+## Requirements
+
+| Package | Used for |
+|---|---|
+| `aiosqlite` | Async SQLite for channel settings |
+| `beautifulsoup4` | HTML parsing for title/cover scraping |
+| `curl_cffi` | HTTP client with browser impersonation |
+| `discord.py` | Discord bot framework |
+| `discord-webhook` | Discord webhook client (CLI) |
+| `httpx` | Async HTTP for Telegram API |
+| `python-telegram-bot` | Telegram bot client |
+| `requests` | HTTP exceptions used by webhook client |

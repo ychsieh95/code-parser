@@ -3,10 +3,10 @@ import asyncio
 import os
 from config.settings import COVER_SAVE_DIR, DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 from datetime import datetime
-from src.code_parser.code_parser import CodeParser
-from src.code_parser.discord_webhooker import DiscordWebhooker
+from utils.code_parser import CodeParser
+from utils.discord_webhooker import DiscordWebhooker
 from utils.logger import Logger, LogLevel
-from src.code_parser.telegram_bot import TelegramBot
+from utils.telegram_bot import TelegramBot
 
 
 dc_bot      = DiscordWebhooker(url=DISCORD_WEBHOOK_URL, retry_num=1)

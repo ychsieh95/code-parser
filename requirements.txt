@@ -1,3 +1,4 @@
+aiosqlite
 beautifulsoup4
 curl_cffi
 discord.py

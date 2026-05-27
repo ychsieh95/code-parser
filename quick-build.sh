@@ -41,6 +41,12 @@ PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_ROOT"
 info "Project root directory: $PROJECT_ROOT"
 
+# Abort early if settings.py is missing — the bot cannot start without it
+if [[ ! -f "${PROJECT_ROOT}/config/settings.py" ]]; then
+    fail "config/settings.py not found. Copy config/settings.example.py and fill in your tokens."
+    exit 1
+fi
+
 # Create the target directory and copy all files
 info "Copying files to ${INSTALL_DIR}..."
 mkdir -p "${INSTALL_DIR}"
@@ -50,6 +56,7 @@ if command -v rsync >/dev/null 2>&1; then
       --exclude ".git/" \
       --exclude ".venv/" \
       --exclude "__pycache__/" \
+      --exclude "assets/covers/" \
       "${PROJECT_ROOT}/" "${INSTALL_DIR}/"
 else
     warn "rsync not found, using cp fallback (stale files may remain)"
@@ -80,3 +87,6 @@ install -m 644 "${SERVICE_SRC}" "${SERVICE_DST}"
 systemctl --user daemon-reload
 systemctl --user enable --now "${SERVICE_NAME}"
 ok "Systemd service set up and started"
+
+# Show live status so it's immediately clear if the bot failed to start
+systemctl --user status "${SERVICE_NAME}" --no-pager -l || true
