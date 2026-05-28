@@ -7,13 +7,12 @@ from discord.ext import commands
 from config.settings import BOT_TOKEN
 from utils.comic_parser import ComicParser
 from utils.code_parser import CodeParser
-from utils.logger import LogLevel, Logger
+from utils.logger import LogLevel
 from bot.db import Database
+from bot.logger import logger
 from bot.commands.admin import AdminCog
 from bot.commands.general import GeneralCog
 from bot.commands.events import EventsCog
-
-logger = Logger(clear_previous=False, reserve_line_num=0)
 
 # Set DEV_GUILD_ID in your environment for instant per-guild sync during development.
 # Leave unset (or 0) for normal global sync in production.
@@ -24,7 +23,7 @@ class CodeParserBot(commands.Bot):
     def __init__(self, db: Database):
         intents = discord.Intents.default()
         intents.message_content = True
-        super().__init__(command_prefix='!', intents=intents)
+        super().__init__(command_prefix=commands.when_mentioned, intents=intents)
         self.db = db
 
     async def setup_hook(self):
@@ -34,17 +33,16 @@ class CodeParserBot(commands.Bot):
         await self.add_cog(GeneralCog(self, self.db))
         await self.add_cog(EventsCog(self, self.db, code_parser, comic_parser))
 
-    async def on_ready(self):
         if DEV_GUILD_ID:
             guild = discord.Object(id=DEV_GUILD_ID)
             self.tree.copy_global_to(guild=guild)
             synced = await self.tree.sync(guild=guild)
             logger.print(f'[DEV] Synced {len(synced)} commands to guild {DEV_GUILD_ID}', LogLevel.INFO)
         else:
-            for guild in self.guilds:
-                synced = await self.tree.sync(guild=guild)
-                logger.print(f'Synced {len(synced)} commands to {guild.name} ({guild.id})', LogLevel.INFO)
-            await self.tree.sync()
+            synced = await self.tree.sync()
+            logger.print(f'Synced {len(synced)} global commands', LogLevel.INFO)
+
+    async def on_ready(self):
         logger.print(f'Logged in as {self.user} (id: {self.user.id})', LogLevel.INFO)
 
 
@@ -79,4 +77,5 @@ async def main():
         logger.print('Bot shut down cleanly.', LogLevel.INFO)
 
 
-asyncio.run(main())
+if __name__ == '__main__':
+    asyncio.run(main())

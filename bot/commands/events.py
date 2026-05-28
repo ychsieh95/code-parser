@@ -5,27 +5,23 @@ import discord
 from discord.ext import commands
 from utils.comic_parser import ComicType, ComicParser, NhentaiComicParser
 from utils.code_parser import CodeParser
-from utils.logger import LogLevel, Logger
+from utils.logger import LogLevel
+from bot.constants import MODE_CODE, MODE_COMIC
 from bot.db import Database
+from bot.logger import logger
+from config.settings import COVER_SAVE_DIR as _COVER_DIRS
 
 _CODE_PATTERNS = [
     re.compile(r'^([a-zA-Z]{2,5})[-]?(\d{3,5})$'),
     re.compile(r'^(FC2)[-]?(PPV)?[-]?(\d+)$'),
 ]
 
-COVER_SAVE_DIR = {
-    'code'  : './assets/covers/code',
-    'comic' : {
-        ComicType.NHENTAI: './assets/covers/comics/nhentai',
-        ComicType.WNACG  : './assets/covers/comics/wnacg',
-        ComicType.JM     : './assets/covers/comics/JM',
-    }
+_CODE_COVER_DIR   = _COVER_DIRS['code']
+_COMIC_COVER_DIRS = {
+    ComicType.NHENTAI: _COVER_DIRS['comic']['nhentai'],
+    ComicType.WNACG  : _COVER_DIRS['comic']['wnacg'],
+    ComicType.JM     : _COVER_DIRS['comic']['jm'],
 }
-
-MODE_CODE  = "code"
-MODE_COMIC = "comic"
-
-logger = Logger(clear_previous=False, reserve_line_num=0)
 
 
 class EventsCog(commands.Cog):
@@ -35,9 +31,13 @@ class EventsCog(commands.Cog):
         self.code_parser  = code_parser
         self.comic_parser = comic_parser
 
+        os.makedirs(_CODE_COVER_DIR, exist_ok=True)
+        for comic_dir in _COMIC_COVER_DIRS.values():
+            os.makedirs(comic_dir, exist_ok=True)
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
-        if message.author == self.bot.user:
+        if message.author.bot:
             return
 
         active_modes = self.db.get_modes(message.channel.id)
@@ -70,11 +70,17 @@ class EventsCog(commands.Cog):
 
         await self._delete_message(message)
 
+        coros = []
         for kind, line, extra in tasks:
             if kind == 'code':
-                await self._handle_code(message, self.code_parser.fix_code(line))
+                coros.append(self._handle_code(message, self.code_parser.fix_code(line)))
             else:
-                await self._handle_comic(message, line, extra)
+                coros.append(self._handle_comic(message, line, extra))
+        if coros:
+            results = await asyncio.gather(*coros, return_exceptions=True)
+            for result in results:
+                if isinstance(result, BaseException):
+                    logger.print(f'Handler raised an unhandled exception: {result}', LogLevel.WARN)
 
         for line in failures:
             if MODE_CODE in active_modes:
@@ -101,19 +107,23 @@ class EventsCog(commands.Cog):
             pass
 
     async def _handle_code(self, message: discord.Message, code: str):
-        cover_path = f'{COVER_SAVE_DIR["code"]}/{code}.jpg'
-        os.makedirs(COVER_SAVE_DIR['code'], exist_ok=True)
+        cover_path = f'{_CODE_COVER_DIR}/{code}.jpg'
+        parser = CodeParser()
 
-        title_flag, title = await asyncio.to_thread(self.code_parser.get_title, code)
-        has_cover         = await asyncio.to_thread(self.code_parser.download_cover, code, cover_path)
-        logger.print(f'Parsed code "{code}": title="{title}", has_cover={has_cover}', LogLevel.INFO)
+        title_flag, title = await asyncio.to_thread(parser.get_title, code)
+        logger.print(f'Parsed code "{code}": title_flag={title_flag}, title="{title}"', LogLevel.INFO)
 
         if not title_flag:
             logger.print(f'Could not find title for code "{code}"', LogLevel.WARN)
             await message.channel.send(content=f'Could not find title for code "{code}"')
             return
 
-        content = f'**[{code} | {title}]({self.code_parser.get_video_url(code)})**'
+        has_cover = await asyncio.to_thread(parser.download_cover, code, cover_path)
+        logger.print(f'Parsed code "{code}": has_cover={has_cover}', LogLevel.INFO)
+
+        title = title or code
+        escaped_title = discord.utils.escape_markdown(title)
+        content = f'**[{code} | {escaped_title}]({self.code_parser.get_video_url(code)})**'
         if has_cover and os.path.isfile(cover_path):
             await message.channel.send(content=content, file=discord.File(cover_path, filename=f'{code}.jpg'))
         else:
@@ -131,12 +141,11 @@ class EventsCog(commands.Cog):
                 await message.channel.send(content=f'Unsupported comic code "{code}"')
                 return
 
-        comic_dir  = COVER_SAVE_DIR['comic'][comic_type]
-        cover_path = f'{comic_dir}/{code}.jpg'
-        os.makedirs(comic_dir, exist_ok=True)
+        cover_path = f'{_COMIC_COVER_DIRS[comic_type]}/{code}.jpg'
 
-        title_flag, title = await asyncio.to_thread(parser.get_title, code)
-        has_cover         = await asyncio.to_thread(parser.download_cover, code, cover_path)
+        title_flag, title, has_cover = await asyncio.to_thread(
+            parser.fetch_and_save, code, cover_path
+        )
         logger.print(f'Parsed comic "{code}": title="{title}", has_cover={has_cover}', LogLevel.INFO)
 
         if not title_flag:
@@ -144,7 +153,9 @@ class EventsCog(commands.Cog):
             await message.channel.send(content=f'Could not find title for comic "{code}"')
             return
 
-        content = f'**[{code} | {title}]({parser.get_comic_url(code)})**'
+        title = title or code
+        escaped_title = discord.utils.escape_markdown(title)
+        content = f'**[{code} | {escaped_title}]({parser.get_comic_url(code)})**'
         if has_cover and os.path.isfile(cover_path):
             await message.channel.send(content=content, file=discord.File(cover_path, filename=f'{code}.jpg'))
         else:

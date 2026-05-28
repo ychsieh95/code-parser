@@ -18,7 +18,3 @@ TELEGRAM_CHANNEL_ID = 'YOUR_CHANNEL_ID'
 
 # ── Configuration of Discord Code Parser Bot ─────────────────────────────────
 BOT_TOKEN = "YOUR_DISCORD_BOT_TOKEN"
-CHANNEL_IDS = {
-    'codes' : [123456789012345678],
-    'comics': [123456789012345679]
-}

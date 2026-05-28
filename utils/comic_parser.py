@@ -1,14 +1,8 @@
 import os
 import re
-import typing
 from curl_cffi import requests
 from enum import IntEnum
 from bs4 import BeautifulSoup
-
-
-class ParseStatus(typing.TypedDict):
-    found: bool
-    title: str
 
 
 class ComicType(IntEnum):
@@ -25,8 +19,6 @@ class ComicParser:
         else:
             self.proxy = None
         self.scraper = self.get_scraper()
-
-        self.url_prefix = 'https://nhentai.net/g'
 
     @staticmethod
     def get_scraper():
@@ -50,53 +42,90 @@ class NhentaiComicParser(ComicParser):
     def get_comic_url(self, code: str) -> str:
         return f'{self.url_prefix}/{code}'
 
-    def get_cover_url(self, code: str) -> bool:
-        content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy)
+    def get_cover_url(self, code: str) -> str | None:
         try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
             content.raise_for_status()
-        except requests.exceptions.HTTPError:
-            return False
+        except Exception:
+            return None
 
-        soup = BeautifulSoup(content.text, 'html.parser')
+        soup      = BeautifulSoup(content.text, 'html.parser')
         cover_div = soup.find('div', id='cover')
-        if cover_div:
-            img = cover_div.find('img')
-            if img:
-                return img.get('src')
-        return False
+        if cover_div and (img := cover_div.find('img')):
+            return img.get('src')
+        return None
 
-    def get_title(self, code: str) -> ParseStatus:
-        content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy)
+    def get_title(self, code: str) -> tuple[bool, str | None]:
         try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
             content.raise_for_status()
-        except requests.exceptions.HTTPError:
-            return [False, None]
+        except Exception:
+            return False, None
 
-        soup = BeautifulSoup(content.text, 'html.parser')
+        soup      = BeautifulSoup(content.text, 'html.parser')
         title_tag = soup.find('title')
-        if title_tag:
-            return [True, title_tag.text.strip()]
-        else:
-            return [True, None]
+        return (True, title_tag.text.strip()) if title_tag else (True, None)
 
     def download_cover(self, code: str, cover_save_path: str) -> bool:
         cover_url = self.get_cover_url(code)
         if not cover_url:
             return False
-
         try:
-            cover = self.scraper.get(cover_url, proxies=self.proxy)
+            cover = self.scraper.get(cover_url, proxies=self.proxy, timeout=10)
             cover.raise_for_status()
             with open(cover_save_path, 'wb') as f:
                 f.write(cover.content)
             return True
-        except requests.exceptions.HTTPError:
+        except Exception:
             return False
+
+    def fetch_and_save(self, code: str, cover_save_path: str) -> tuple[bool, str | None, bool]:
+        """Fetch title and cover in a single page request."""
+        try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
+            content.raise_for_status()
+        except Exception:
+            return False, None, False
+
+        soup = BeautifulSoup(content.text, 'html.parser')
+
+        title_tag = soup.find('title')
+        title     = title_tag.text.strip() if title_tag else None
+
+        cover_saved = False
+        cover_div   = soup.find('div', id='cover')
+        if cover_div and (img := cover_div.find('img')):
+            cover_url = img.get('src')
+            if cover_url:
+                try:
+                    cover = self.scraper.get(cover_url, proxies=self.proxy, timeout=10)
+                    cover.raise_for_status()
+                    with open(cover_save_path, 'wb') as f:
+                        f.write(cover.content)
+                    cover_saved = True
+                except Exception:
+                    pass
+
+        return True, title, cover_saved
 
 
 class WnacgComicParser(ComicParser):
-    pass
+    def get_comic_url(self, code: str) -> str:
+        raise NotImplementedError
+    def get_title(self, code: str) -> tuple[bool, str | None]:
+        raise NotImplementedError
+    def download_cover(self, code: str, cover_save_path: str) -> bool:
+        raise NotImplementedError
+    def fetch_and_save(self, code: str, cover_save_path: str) -> tuple[bool, str | None, bool]:
+        raise NotImplementedError
 
 
 class JmComicParser(ComicParser):
-    pass
+    def get_comic_url(self, code: str) -> str:
+        raise NotImplementedError
+    def get_title(self, code: str) -> tuple[bool, str | None]:
+        raise NotImplementedError
+    def download_cover(self, code: str, cover_save_path: str) -> bool:
+        raise NotImplementedError
+    def fetch_and_save(self, code: str, cover_save_path: str) -> tuple[bool, str | None, bool]:
+        raise NotImplementedError

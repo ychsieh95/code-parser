@@ -1,6 +1,5 @@
 import httpx
 import asyncio
-from typing import List, Optional
 from telegram import InputMediaPhoto
 from telegram.ext import Application
 
@@ -10,7 +9,7 @@ class TelegramBot:
         self.token: str = token
         self.chat_id: str = chat_id
         self.application = Application.builder().token(token).build()
-        self.message_id: Optional[int] = None
+        self.message_id: int | None = None
         self.retry_num: int = retry_num
         self.debug: bool = False
 
@@ -27,7 +26,7 @@ class TelegramBot:
             except Exception as e:
                 await self._handle_retry_error('send_message', i, e)
 
-    async def send_media_group(self, medias: List[InputMediaPhoto], disable_notification: bool = False) -> int:
+    async def send_media_group(self, medias: list[InputMediaPhoto], disable_notification: bool = False) -> int:
         for i in range(self.retry_num):
             try:
                 messages = await self.application.bot.send_media_group(
@@ -40,7 +39,7 @@ class TelegramBot:
             except Exception as e:
                 await self._handle_retry_error('send_media_group', i, e)
 
-    async def pin_message(self, message_id: Optional[int] = None, disable_notification: bool = False) -> None:
+    async def pin_message(self, message_id: int | None = None, disable_notification: bool = False) -> None:
         mid = message_id if message_id is not None else self.message_id
         for i in range(self.retry_num):
             try:
@@ -61,7 +60,7 @@ class TelegramBot:
             except Exception as e:
                 await self._handle_retry_error('unpin_all_messages', i, e)
 
-    async def delete_message(self, message_id: Optional[int] = None) -> None:
+    async def delete_message(self, message_id: int | None = None) -> None:
         mid = message_id if message_id is not None else self.message_id
         for i in range(self.retry_num):
             try:
@@ -70,7 +69,7 @@ class TelegramBot:
             except Exception as e:
                 await self._handle_retry_error('delete_message', i, e)
 
-    async def edit_message(self, message_id: Optional[int] = None, new_text: str = "") -> None:
+    async def edit_message(self, message_id: int | None = None, new_text: str = "") -> None:
         mid = message_id if message_id is not None else self.message_id
         for i in range(self.retry_num):
             try:
@@ -83,7 +82,22 @@ class TelegramBot:
             except Exception as e:
                 await self._handle_retry_error('edit_message', i, e)
 
-    async def get_last_message_id(self) -> Optional[int]:
+    async def send_photo(self, image_path: str, caption: str = "", disable_notification: bool = False) -> int:
+        for i in range(self.retry_num):
+            try:
+                with open(image_path, 'rb') as photo:
+                    message = await self.application.bot.send_photo(
+                        chat_id=self.chat_id,
+                        photo=photo,
+                        caption=caption,
+                        disable_notification=disable_notification
+                    )
+                self.message_id = message.message_id
+                return self.message_id
+            except Exception as e:
+                await self._handle_retry_error('send_photo', i, e)
+
+    async def get_last_message_id(self) -> int | None:
         return self.message_id
 
     async def get_update_json(self) -> dict:

@@ -61,6 +61,9 @@ class Database:
         )
         await self._db.commit()
         if cursor.rowcount > 0:
-            self._cache.get(channel_id, set()).discard(mode)
+            modes = self._cache.get(channel_id, set())
+            modes.discard(mode)
+            if not modes:
+                self._cache.pop(channel_id, None)
             return True
         return False

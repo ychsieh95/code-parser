@@ -1,13 +1,7 @@
 import os
 import re
-import typing
 from curl_cffi import requests
 from bs4 import BeautifulSoup
-
-
-class ParseStatus(typing.TypedDict):
-    found: bool
-    title: str
 
 
 class CodeParser:
@@ -31,59 +25,39 @@ class CodeParser:
     def get_cover_url(self, code: str) -> str:
         return f'{self.cover_url_prefix}/{code}/cover-n.jpg'
 
-    def get_title(self, code: str) -> ParseStatus:
-        content = self.scraper.get(f'{self.video_url_prefix}/{code}', proxies=self.proxy)
+    def get_title(self, code: str) -> tuple[bool, str | None]:
         try:
+            content = self.scraper.get(f'{self.video_url_prefix}/{code}', proxies=self.proxy, timeout=10)
             content.raise_for_status()
-        except requests.exceptions.HTTPError:
-            return [False, None]
+        except Exception:
+            return False, None
 
-        soup = BeautifulSoup(content.text, 'html.parser')
+        soup      = BeautifulSoup(content.text, 'html.parser')
         title_tag = soup.find('h1', class_='text-base lg:text-lg text-nord6')
         if title_tag:
-            return [True, title_tag.text.replace(code, '').strip()]
-        else:
-            return [True, None]
+            return True, title_tag.text.replace(code, '').strip()
+        return True, None
 
     def download_cover(self, code: str, cover_save_path: str) -> bool:
-        counter = 0
-        while True:
-            match counter:
-                case 0: # try to download high resolution cover
-                    try:
-                        movie_cover_link = f'{self.cover_url_prefix}/{code.lower()}/cover-n.jpg'
-                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy)
-                        cover.raise_for_status()
-                        with open(cover_save_path, 'wb') as f:
-                            f.write(cover.content)
-                        return True
-                    except requests.exceptions.HTTPError:
-                        pass
-                case 1: # try to download low resolution cover
-                    try:
-                        movie_cover_link = f'{self.cover_url_prefix}/{code.lower()}/cover-t.jpg'
-                        cover = self.scraper.get(movie_cover_link, proxies=self.proxy)
-                        cover.raise_for_status()
-                        with open(cover_save_path, 'wb') as f:
-                            f.write(cover.content)
-                        return True
-                    except requests.exceptions.HTTPError:
-                        pass
-                case _: # all attempts failed
-                    return False
-            counter += 1
+        for suffix in ('cover-n.jpg', 'cover-t.jpg'):
+            try:
+                url   = f'{self.cover_url_prefix}/{code.lower()}/{suffix}'
+                cover = self.scraper.get(url, proxies=self.proxy, timeout=10)
+                cover.raise_for_status()
+                with open(cover_save_path, 'wb') as f:
+                    f.write(cover.content)
+                return True
+            except Exception:
+                continue
+        return False
 
     def fix_code(self, code: str) -> str:
         code = code.strip().upper()
-        if matches:=re.match(r'^([a-zA-Z]{2,5})[-]?(\d{3,5})$', code):
-            return f'{matches.group(1)}-{matches.group(2)}'
-        elif matches:=re.match(r'^(FC2)[-]?(PPV)?[-]?(\d+)$', code):
-            return f'FC2-PPV-{matches.group(3)}'
-        else:
-            return code
+        if m := re.match(r'^([a-zA-Z]{2,5})[-]?(\d{3,5})$', code):
+            return f'{m.group(1)}-{m.group(2)}'
+        if m := re.match(r'^(FC2)[-]?(PPV)?[-]?(\d+)$', code):
+            return f'FC2-PPV-{m.group(3)}'
+        return code
 
     def fix_codes(self, codes: list[str]) -> list[str]:
-        fixed_codes = []
-        for code in codes:
-            fixed_codes.append(self.fix_code(code))
-        return fixed_codes
+        return [self.fix_code(c) for c in codes]

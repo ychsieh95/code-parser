@@ -1,13 +1,10 @@
 import discord
 from discord import app_commands
 from discord.ext import commands
-from utils.logger import LogLevel, Logger
+from utils.logger import LogLevel
+from bot.constants import MODE_CODE, MODE_COMIC
 from bot.db import Database
-
-MODE_CODE  = "code"
-MODE_COMIC = "comic"
-
-logger = Logger(clear_previous=False, reserve_line_num=0)
+from bot.logger import logger
 
 
 class AdminCog(commands.Cog):

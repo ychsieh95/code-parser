@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import os
+import sys
 from config.settings import COVER_SAVE_DIR, DISCORD_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHANNEL_ID
 from datetime import datetime
 from utils.code_parser import CodeParser
@@ -9,11 +10,7 @@ from utils.logger import Logger, LogLevel
 from utils.telegram_bot import TelegramBot
 
 
-dc_bot      = DiscordWebhooker(url=DISCORD_WEBHOOK_URL, retry_num=1)
-tg_bot      = TelegramBot(token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_CHANNEL_ID, retry_num=1)
-
-code_parser = CodeParser()
-logger      = Logger(reserve_line_num=0)
+logger = Logger(reserve_line_num=0)
 
 
 def append_to_file(file_path: str, message: str) -> None:
@@ -21,23 +18,18 @@ def append_to_file(file_path: str, message: str) -> None:
         f.write(message + '\n')
 
 
-def init_directories() -> None:
-    if not os.path.exists(COVER_SAVE_DIR):
-        os.makedirs(COVER_SAVE_DIR)
+def get_full_log(code: str, title: str, url: str) -> str:
+    return f'{code} | {title}\nUrl: {url}'
 
 
-def get_full_log(code: str, title: str) -> str:
-    return f'{code} | {title}\nUrl: {CodeParser().get_url(code)}'
-
-
-def get_discord_log(code: str, title: str) -> str:
+def get_discord_log(code: str, title: str, url: str) -> str:
     title = title.replace('_', '\\_') \
                  .replace('*', '\\*') \
                  .replace('`', '\\`') \
                  .replace('~', '\\~') \
                  .replace('[', '［') \
                  .replace(']', '］')
-    return f'**[{code} | {title}]({CodeParser().get_url(code)})**'
+    return f'**[{code} | {title}]({url})**'
 
 
 async def main() -> None:
@@ -49,70 +41,68 @@ async def main() -> None:
     args = parser.parse_args()
     logger.print(args, level=LogLevel.INFO)
 
-
-    # Validate input arguments
     if not args.codes and not args.input_file:
         logger.print('Please provide either a code or an input file!', LogLevel.FAILED)
-        exit(1)
+        sys.exit(1)
 
-    # Read codes from input argument and input file
-    codes = []
-    if args.codes:
-        codes = args.codes
+    codes = list(args.codes or [])
     if args.input_file:
         if not os.path.exists(args.input_file):
             logger.print(f'{args.input_file} file not found!', LogLevel.FAILED)
-            exit(1)
+            sys.exit(1)
         with open(args.input_file, 'r') as file:
-            [codes.append(line.strip()) for line in file if line.strip()]
-    codes = [code.upper() for code in codes]
-    codes = sorted(list(set(codes)))
+            codes.extend(line.strip() for line in file if line.strip())
 
-    # Check if any codes were found, and fix codes
+    codes = sorted(set(code.upper() for code in codes))
     if not codes:
         logger.print('No codes found in the input file!', LogLevel.FAILED)
-        exit(1)
-    codes = code_parser.fix_codes(codes)
+        sys.exit(1)
 
-    # Backup existing output file
-    if args.output_file:
-        if os.path.exists(args.output_file):
-            os.rename(args.output_file, f'{args.output_file}.bak-{datetime.now().strftime("%Y%m%d_%H%M%S")}')
+    code_parser = CodeParser()
+    dc_bot      = DiscordWebhooker(url=DISCORD_WEBHOOK_URL, retry_num=1)
+    tg_bot      = TelegramBot(token=TELEGRAM_BOT_TOKEN, chat_id=TELEGRAM_CHANNEL_ID, retry_num=1)
+    codes       = code_parser.fix_codes(codes)
 
-    # Process each code
-    init_directories()
-    for code in codes:
+    if args.output_file and os.path.exists(args.output_file):
+        os.rename(args.output_file, f'{args.output_file}.bak-{datetime.now().strftime("%Y%m%d_%H%M%S")}')
+
+    os.makedirs(COVER_SAVE_DIR['code'], exist_ok=True)
+
+    for i, code in enumerate(codes):
         title_flag, title = code_parser.get_title(code)
-        cover_path        = f'{COVER_SAVE_DIR}/{code}.jpg'
-        message           = ''
+        cover_path        = f'{COVER_SAVE_DIR["code"]}/{code}.jpg'
+
         if title_flag:
-            _       = code_parser.download_cover(code, cover_path)
+            title = title or code
+            has_cover = code_parser.download_cover(code, cover_path)
             message = f'{code} | {title}'
         else:
+            has_cover = False
             message = f'{code} | 404 NOT FOUND'
 
-        if title_flag:
-            logger.print(message, level=LogLevel.OK)
-            if args.notify in ['discord', 'all']:
-                await dc_bot.send_message(text=get_discord_log(code=code, title=title), image_paths=[cover_path] if os.path.exists(cover_path) else [])
-                await asyncio.sleep(1)  # To avoid hitting Discord rate limits
-            if args.notify in ['telegram', 'all']:
-                await tg_bot.send_message(text=get_full_log(code=code, title=title), image_path=cover_path if os.path.exists(cover_path) else None)
-                await asyncio.sleep(1)  # To avoid hitting Telegram rate limits
-            if args.output_file:
-                append_to_file(args.output_file, message)
-        else:
-            logger.print(message, level=LogLevel.OK)
-            if args.notify in ['discord', 'all']:
-                await dc_bot.send_message(text=message, image_paths=[cover_path] if os.path.exists(cover_path) else [])
-                await asyncio.sleep(1)  # To avoid hitting Discord rate limits
-            if args.notify in ['telegram', 'all']:
-                await tg_bot.send_message(text=message, image_path=cover_path if os.path.exists(cover_path) else None)
-                await asyncio.sleep(1)  # To avoid hitting Telegram rate limits
-            if args.output_file:
-                append_to_file(args.output_file, message)
-        if code != codes[-1]:
-            if args.output_file:
+        url           = code_parser.get_video_url(code)
+        discord_text  = get_discord_log(code, title, url) if title_flag else message
+        telegram_text = get_full_log(code, title, url)    if title_flag else message
+
+        logger.print(message, level=LogLevel.OK)
+
+        if args.notify in ['discord', 'all']:
+            await dc_bot.send_message(
+                text=discord_text,
+                image_paths=[cover_path] if has_cover else []
+            )
+            await asyncio.sleep(1)
+
+        if args.notify in ['telegram', 'all']:
+            if has_cover:
+                await tg_bot.send_photo(cover_path, caption=telegram_text)
+            else:
+                await tg_bot.send_message(text=telegram_text)
+            await asyncio.sleep(1)
+
+        if args.output_file:
+            append_to_file(args.output_file, message)
+            if i < len(codes) - 1:
                 append_to_file(args.output_file, '\n\n')
 
 

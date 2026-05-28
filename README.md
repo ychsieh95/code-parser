@@ -11,20 +11,22 @@ code-parser/
 ├── bot/                    # Discord bot
 │   ├── main.py             # Entry point
 │   ├── db.py               # SQLite persistence (channel settings)
+│   ├── constants.py        # Shared mode constants
+│   ├── logger.py           # Shared logger instance
 │   └── commands/
 │       ├── admin.py        # Enable/disable parsing, guild status
 │       ├── events.py       # Message handler (on_message)
 │       └── general.py      # /help, /status, /updatelog
+├── cli/
+│   └── cli.py              # Batch CLI for code parsing
 ├── utils/                  # Shared utilities
 │   ├── code_parser.py      # Video code scraper (missav.ws)
 │   ├── comic_parser.py     # Comic scraper (nhentai, wnacg, jm)
 │   ├── discord_webhooker.py
 │   ├── telegram_bot.py
 │   └── logger.py
-├── scripts/
-│   └── cli.py              # Batch CLI for code parsing
 ├── config/
-│   ├── settings.py         # Tokens and directory config
+│   ├── settings.py         # Tokens and directory config (gitignored)
 │   └── settings.example.py
 ├── assets/
 │   └── images/             # Bot icon and banner
@@ -54,11 +56,11 @@ Edit `config/settings.py` and fill in:
 
 | Key | Description |
 |---|---|
+| `COVER_SAVE_DIR` | Dict of local paths for saving cover images (`code` and `comic` sub-keys) |
 | `BOT_TOKEN` | Discord bot token |
 | `DISCORD_WEBHOOK_URL` | Discord webhook URL (CLI notify) |
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token (CLI notify) |
 | `TELEGRAM_CHANNEL_ID` | Telegram channel ID (CLI notify) |
-| `COVER_SAVE_DIR` | Local path to save cover images |
 
 ---
 
@@ -99,7 +101,8 @@ DEV_GUILD_ID=123456789 python3 -m bot.main
 ### How It Works
 
 When a parsing mode is enabled for a channel, the bot:
-1. Intercepts every message in that channel
+
+1. Intercepts every human message in that channel (bot and webhook messages are ignored)
 2. Deletes the original message
 3. Looks up the title and cover image for each code
 4. Posts a formatted reply with a link and cover image
@@ -130,10 +133,10 @@ systemctl --user enable --now discord-bot-code-parser
 Batch-process codes and optionally notify via Discord webhook or Telegram.
 
 ```bash
-python3 -m scripts.cli --codes ABC-123 DEF-456
-python3 -m scripts.cli --input-file codes.txt --output-file results.txt
-python3 -m scripts.cli --input-file codes.txt --notify discord
-python3 -m scripts.cli --input-file codes.txt --notify all
+python3 -m cli.cli --codes ABC-123 DEF-456
+python3 -m cli.cli --input-file codes.txt --output-file results.txt
+python3 -m cli.cli --input-file codes.txt --notify discord
+python3 -m cli.cli --input-file codes.txt --notify all
 ```
 
 **Arguments**
@@ -142,7 +145,7 @@ python3 -m scripts.cli --input-file codes.txt --notify all
 |---|---|
 | `--codes` | One or more codes to process |
 | `--input-file` | Path to a text file with one code per line |
-| `--output-file` | Path to save results (existing file is backed up) |
+| `--output-file` | Path to save results (existing file is backed up automatically) |
 | `--notify` | Send results via `discord`, `telegram`, or `all` |
 
 ---
