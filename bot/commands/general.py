@@ -68,6 +68,12 @@ class GeneralCog(commands.Cog):
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
 
+    @commands.command(name='sync')
+    @commands.is_owner()
+    async def cmd_sync(self, ctx: commands.Context):
+        synced = await self.bot.tree.sync()
+        await ctx.send(f'Synced {len(synced)} global commands.')
+
     @app_commands.command(name='status', description='Show current parsing status for this channel')
     async def cmd_status(self, interaction: discord.Interaction):
         modes = self.db.get_modes(interaction.channel_id)
