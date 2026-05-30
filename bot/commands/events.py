@@ -1,15 +1,15 @@
 import asyncio
+import discord
 import os
 import re
-import discord
-from discord.ext import commands
-from utils.comic_parser import ComicType, ComicParser, NhentaiComicParser
-from utils.code_parser import CodeParser
-from utils.logger import LogLevel
 from bot.constants import MODE_CODE, MODE_COMIC
 from bot.db import Database
 from bot.logger import logger
 from config.settings import COVER_SAVE_DIR as _COVER_DIRS
+from discord.ext import commands
+from utils.comic_parser import ComicType, ComicParser, NhentaiComicParser
+from utils.code_parser import CodeParser
+from utils.logger import LogLevel
 
 _COMIC_CODE_PATTERNS = [
     re.compile(r'^N?[\d]+$'),     # Nhentai: 123456 or N123456
@@ -71,23 +71,39 @@ class EventsCog(commands.Cog):
 
         await self._delete_message(message)
 
-        # Run all fetches concurrently; gather preserves slot order
-        fetch_slots = [(i, coro) for i, (kind, coro) in enumerate(work) if kind == 'fetch']
-        if fetch_slots:
-            indices, coros = zip(*fetch_slots)
-            raw_results = await asyncio.gather(*coros, return_exceptions=True)
-            fetch_results = dict(zip(indices, raw_results))
-        else:
-            fetch_results = {}
+        def progress_bar(done: int, total: int, width: int = 20) -> str:
+            filled = done * width // total
+            return '█' * filled + '░' * (width - filled)
 
-        # Send results in original input order
-        for i, (kind, payload) in enumerate(work):
+        fetch_total = sum(1 for kind, _ in work if kind == 'fetch')
+
+        def build_status(done: int) -> str:
+            bar = progress_bar(done, fetch_total)
+            return (
+                f'{message.author.mention} Received {len(lines)} code(s)\n'
+                f'Processing {bar} ({done}/{fetch_total})'
+            )
+
+        processing_msg = None
+        if fetch_total:
+            processing_msg = await message.channel.send(build_status(0))
+
+        completed = 0
+        for kind, payload in work:
             if kind == 'fetch':
-                result = fetch_results[i]
-                if isinstance(result, BaseException):
-                    logger.print(f'Handler raised an unhandled exception: {result}', LogLevel.WARN)
+                if completed > 0:
+                    await asyncio.sleep(1.0)
+                try:
+                    content, cover_path = await payload
+                except BaseException as e:
+                    logger.print(f'Handler raised an unhandled exception: {e}', LogLevel.WARN)
+                    completed += 1
+                    if processing_msg:
+                        await processing_msg.edit(content=build_status(completed))
                     continue
-                content, cover_path = result
+                completed += 1
+                if processing_msg:
+                    await processing_msg.edit(content=build_status(completed))
                 if cover_path:
                     await message.channel.send(
                         content=content,
@@ -111,6 +127,9 @@ class EventsCog(commands.Cog):
                         f'{message.author.mention} `{line}` is not a recognized code or comic code.'
                     )
 
+        if processing_msg:
+            await processing_msg.delete()
+
     @staticmethod
     def _is_valid_comic_code(code: str) -> bool:
         return any(p.match(code.upper()) for p in _COMIC_CODE_PATTERNS)
@@ -124,14 +143,21 @@ class EventsCog(commands.Cog):
         except discord.NotFound:
             pass
 
-    async def _fetch_code(self, code: str) -> tuple[str, str | None]:
+    async def _fetch_code(self, code: str, retries: int = 3, retry_delay: float = 2.0) -> tuple[str, str | None]:
         cover_path = f'{_CODE_COVER_DIR}/{code}.jpg'
 
-        title_flag, title = await asyncio.to_thread(self.code_parser.get_title, code)
-        logger.print(f'Parsed code "{code}": title_flag={title_flag}, title="{title}"', LogLevel.INFO)
+        title_flag, title = False, None
+        for attempt in range(1, retries + 1):
+            title_flag, title = await asyncio.to_thread(self.code_parser.get_title, code)
+            logger.print(f'Parsed code "{code}" (attempt {attempt}/{retries}): title_flag={title_flag}, title="{title}"', LogLevel.INFO)
+            if title_flag:
+                break
+            if attempt < retries:
+                logger.print(f'Retrying code "{code}" in {retry_delay}s...', LogLevel.WARN)
+                await asyncio.sleep(retry_delay)
 
         if not title_flag:
-            logger.print(f'Could not find title for code "{code}"', LogLevel.WARN)
+            logger.print(f'Could not find title for code "{code}" after {retries} attempt(s)', LogLevel.WARN)
             return (f'Could not find title for code "{code}"', None)
 
         has_cover = await asyncio.to_thread(self.code_parser.download_cover, code, cover_path)

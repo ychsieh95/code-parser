@@ -1,18 +1,18 @@
 import asyncio
+import discord
 import os
 import signal
-import discord
-from discord import app_commands
-from discord.ext import commands
-from config.settings import BOT_TOKEN
-from utils.comic_parser import ComicParser
-from utils.code_parser import CodeParser
-from utils.logger import LogLevel
+from bot.commands.admin import AdminCog
+from bot.commands.events import EventsCog
+from bot.commands.general import GeneralCog
 from bot.db import Database
 from bot.logger import logger
-from bot.commands.admin import AdminCog
-from bot.commands.general import GeneralCog
-from bot.commands.events import EventsCog
+from config.settings import BOT_TOKEN
+from discord import app_commands
+from discord.ext import commands
+from utils.code_parser import CodeParser
+from utils.comic_parser import ComicParser
+from utils.logger import LogLevel
 
 # Set DEV_GUILD_ID in your environment for instant per-guild sync during development.
 # Leave unset (or 0) for normal global sync in production.
