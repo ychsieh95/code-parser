@@ -6,6 +6,7 @@ from bot.constants import MODE_CODE, MODE_COMIC
 from bot.db import Database
 from bot.logger import logger
 from config.settings import COVER_SAVE_DIR as _COVER_DIRS
+from discord import app_commands
 from discord.ext import commands
 from utils.comic_parser import ComicType, ComicParser, NhentaiComicParser
 from utils.code_parser import CodeParser
@@ -27,10 +28,12 @@ _COMIC_COVER_DIRS = {
 
 class EventsCog(commands.Cog):
     def __init__(self, bot: commands.Bot, db: Database, code_parser: CodeParser, comic_parser: ComicParser):
-        self.bot          = bot
-        self.db           = db
-        self.code_parser  = code_parser
-        self.comic_parser = comic_parser
+        self.bot               = bot
+        self.db                = db
+        self.code_parser       = code_parser
+        self.comic_parser      = comic_parser
+        self.fetch_retries     = 3
+        self.fetch_retry_delay = 2.0
 
         os.makedirs(_CODE_COVER_DIR, exist_ok=True)
         for comic_dir in _COMIC_COVER_DIRS.values():
@@ -65,7 +68,7 @@ class EventsCog(commands.Cog):
                 else:
                     work.append(('fail', line))
             elif MODE_CODE in active_modes:
-                work.append(('fetch', self._fetch_code(self.code_parser.fix_code(line))))
+                work.append(('fetch', self._fetch_code(self.code_parser.fix_code(line), self.fetch_retries, self.fetch_retry_delay)))
             else:
                 work.append(('fail', line))
 
@@ -129,6 +132,28 @@ class EventsCog(commands.Cog):
 
         if processing_msg:
             await processing_msg.delete()
+
+    @app_commands.command(name='set_latency', description='Set retry delay (seconds) between fetch attempts for code parsing')
+    @app_commands.describe(seconds='Delay in seconds between retries (0.0 – 60.0)')
+    @app_commands.default_permissions(administrator=True)
+    async def cmd_set_latency(self, interaction: discord.Interaction, seconds: float):
+        if not (0.0 <= seconds <= 60.0):
+            await interaction.response.send_message('Retry delay must be between 0.0 and 60.0 seconds.', ephemeral=True)
+            return
+        self.fetch_retry_delay = seconds
+        logger.print(f'fetch retry_delay set to {seconds}s', LogLevel.INFO)
+        await interaction.response.send_message(f'Retry delay set to **{seconds}s**.', ephemeral=True)
+
+    @app_commands.command(name='set_retry_num', description='Set number of fetch attempts for code parsing')
+    @app_commands.describe(count='Number of attempts (1 – 10)')
+    @app_commands.default_permissions(administrator=True)
+    async def cmd_set_retry_num(self, interaction: discord.Interaction, count: int):
+        if not (1 <= count <= 10):
+            await interaction.response.send_message('Retry count must be between 1 and 10.', ephemeral=True)
+            return
+        self.fetch_retries = count
+        logger.print(f'fetch retries set to {count}', LogLevel.INFO)
+        await interaction.response.send_message(f'Retry count set to **{count}**.', ephemeral=True)
 
     @staticmethod
     def _is_valid_comic_code(code: str) -> bool:
