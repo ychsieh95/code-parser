@@ -44,6 +44,10 @@ class EventsCog(commands.Cog):
         if message.author.bot:
             return
 
+        ctx = await self.bot.get_context(message)
+        if ctx.valid:
+            return
+
         active_modes = self.db.get_modes(message.channel.id)
         if not active_modes:
             return
