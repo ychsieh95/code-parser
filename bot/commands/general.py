@@ -71,8 +71,13 @@ class GeneralCog(commands.Cog):
     @commands.command(name='sync')
     @commands.is_owner()
     async def cmd_sync(self, ctx: commands.Context):
+        try:
+            await ctx.message.delete()
+        except discord.Forbidden:
+            pass
+        status = await ctx.send('🔄 Syncing commands...')
         synced = await self.bot.tree.sync()
-        await ctx.send(f'Synced {len(synced)} global commands.')
+        await status.edit(content=f'✅ Synced {len(synced)} global commands.')
 
     @app_commands.command(name='status', description='Show current parsing status for this channel')
     async def cmd_status(self, interaction: discord.Interaction):

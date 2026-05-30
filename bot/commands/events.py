@@ -44,8 +44,7 @@ class EventsCog(commands.Cog):
         if message.author.bot:
             return
 
-        ctx = await self.bot.get_context(message)
-        if ctx.valid:
+        if message.content.startswith((f'<@{self.bot.user.id}>', f'<@!{self.bot.user.id}>')):
             return
 
         active_modes = self.db.get_modes(message.channel.id)
@@ -61,81 +60,30 @@ class EventsCog(commands.Cog):
 
         logger.print(f'Received {len(lines)} line(s) from {message.author} in #{message.channel.name}', LogLevel.INFO)
 
-        # Build ordered work list in input order: ('fetch', coro) | ('fail', line)
-        work = []
-        for line in lines:
-            logger.print(f'Processing line: "{line}"', LogLevel.INFO)
-            if MODE_COMIC in active_modes and self._is_valid_comic_code(line):
-                comic_type = self.comic_parser.get_comic_type(line)
-                if comic_type != ComicType.UNKNOWN:
-                    work.append(('fetch', self._fetch_comic(line, comic_type)))
-                else:
-                    work.append(('fail', line))
-            elif MODE_CODE in active_modes:
-                work.append(('fetch', self._fetch_code(self.code_parser.fix_code(line), self.fetch_retries, self.fetch_retry_delay)))
-            else:
-                work.append(('fail', line))
-
         await self._delete_message(message)
+        passed_codes, failed_codes = await self._process_lines(lines, message.channel, active_modes, message.author.mention)
+        summary = self._build_summary(passed_codes, failed_codes)
+        await message.channel.send(f'{message.author.mention}\n{summary}')
 
-        def progress_bar(done: int, total: int, width: int = 20) -> str:
-            filled = done * width // total
-            return '█' * filled + '░' * (width - filled)
+    @app_commands.command(name='parse', description='Parse one or more codes')
+    @app_commands.describe(codes='Codes to parse, separated by spaces')
+    async def cmd_parse(self, interaction: discord.Interaction, codes: str):
+        active_modes = self.db.get_modes(interaction.channel_id)
+        if not active_modes:
+            await interaction.response.send_message('No parsing mode is enabled for this channel.', ephemeral=True)
+            return
 
-        fetch_total = sum(1 for kind, _ in work if kind == 'fetch')
+        lines = codes.split()
+        if not lines:
+            await interaction.response.send_message('No codes provided.', ephemeral=True)
+            return
 
-        def build_status(done: int) -> str:
-            bar = progress_bar(done, fetch_total)
-            return (
-                f'{message.author.mention} Received {len(lines)} code(s)\n'
-                f'Processing {bar} ({done}/{fetch_total})'
-            )
+        logger.print(f'Received {len(lines)} code(s) from {interaction.user} in #{interaction.channel.name}', LogLevel.INFO)
 
-        processing_msg = None
-        if fetch_total:
-            processing_msg = await message.channel.send(build_status(0))
-
-        completed = 0
-        for kind, payload in work:
-            if kind == 'fetch':
-                if completed > 0:
-                    await asyncio.sleep(1.0)
-                try:
-                    content, cover_path = await payload
-                except BaseException as e:
-                    logger.print(f'Handler raised an unhandled exception: {e}', LogLevel.WARN)
-                    completed += 1
-                    if processing_msg:
-                        await processing_msg.edit(content=build_status(completed))
-                    continue
-                completed += 1
-                if processing_msg:
-                    await processing_msg.edit(content=build_status(completed))
-                if cover_path:
-                    await message.channel.send(
-                        content=content,
-                        file=discord.File(cover_path, filename=os.path.basename(cover_path))
-                    )
-                else:
-                    await message.channel.send(content=content)
-            else:
-                line = payload
-                if active_modes == {MODE_CODE}:
-                    await message.channel.send(
-                        f'{message.author.mention} `{line}` is not a valid code format. '
-                        'Expected formats: `ABC-123`, `FC2-PPV-123456`, etc.'
-                    )
-                elif active_modes == {MODE_COMIC}:
-                    await message.channel.send(
-                        f'{message.author.mention} `{line}` is not a recognized comic code.'
-                    )
-                else:
-                    await message.channel.send(
-                        f'{message.author.mention} `{line}` is not a recognized code or comic code.'
-                    )
-
-        if processing_msg:
-            await processing_msg.delete()
+        await interaction.response.defer(ephemeral=True)
+        passed_codes, failed_codes = await self._process_lines(lines, interaction.channel, active_modes, interaction.user.mention)
+        summary = self._build_summary(passed_codes, failed_codes)
+        await interaction.followup.send(summary, ephemeral=True)
 
     @app_commands.command(name='set_latency', description='Set retry delay (seconds) between fetch attempts for code parsing')
     @app_commands.describe(seconds='Delay in seconds between retries (0.0 – 60.0)')
@@ -160,6 +108,95 @@ class EventsCog(commands.Cog):
         await interaction.response.send_message(f'Retry count set to **{count}**.', ephemeral=True)
 
     @staticmethod
+    def _build_summary(passed_codes: list[str], failed_codes: list[str]) -> str:
+        total  = len(passed_codes) + len(failed_codes)
+        passed = len(passed_codes)
+        failed = len(failed_codes)
+        lines  = [f'**✅ Result: {passed}/{total} succeeded**']
+        if failed_codes:
+            lines.append(f'❌ Failed ({failed}):')
+            lines.extend(f'- `{c}`' for c in failed_codes)
+        return '\n'.join(lines)
+
+    async def _process_lines(
+        self,
+        lines: list[str],
+        channel: discord.abc.Messageable,
+        active_modes: set[str],
+        author_mention: str,
+    ) -> tuple[list[str], list[str]]:
+        work = []
+        for line in lines:
+            logger.print(f'Processing line: "{line}"', LogLevel.INFO)
+            if MODE_COMIC in active_modes and self._is_valid_comic_code(line):
+                comic_type = self.comic_parser.get_comic_type(line)
+                if comic_type != ComicType.UNKNOWN:
+                    work.append(('fetch', line, self._fetch_comic(line, comic_type)))
+                else:
+                    work.append(('fail', line, None))
+            elif MODE_CODE in active_modes:
+                code = self.code_parser.fix_code(line)
+                work.append(('fetch', code, self._fetch_code(code, self.fetch_retries, self.fetch_retry_delay)))
+            else:
+                work.append(('fail', line, None))
+
+        def progress_bar(done: int, total: int, width: int = 20) -> str:
+            filled = done * width // total
+            return '█' * filled + '░' * (width - filled)
+
+        fetch_total = sum(1 for kind, _, _ in work if kind == 'fetch')
+
+        def build_status(done: int) -> str:
+            bar = progress_bar(done, fetch_total)
+            return (
+                f'{author_mention} Received {len(lines)} code(s)\n'
+                f'Processing {bar} ({done}/{fetch_total})'
+            )
+
+        processing_msg = None
+        if fetch_total:
+            processing_msg = await channel.send(build_status(0))
+
+        passed_codes: list[str] = []
+        failed_codes: list[str] = []
+
+        completed = 0
+        for kind, code, payload in work:
+            if kind == 'fetch':
+                if completed > 0:
+                    await asyncio.sleep(1.0)
+                try:
+                    ok, content, cover_path = await payload
+                except BaseException as e:
+                    logger.print(f'Handler raised an unhandled exception: {e}', LogLevel.WARN)
+                    failed_codes.append(code)
+                    completed += 1
+                    if processing_msg:
+                        await processing_msg.edit(content=build_status(completed))
+                    continue
+                completed += 1
+                if processing_msg:
+                    await processing_msg.edit(content=build_status(completed))
+                if ok:
+                    passed_codes.append(code)
+                    if cover_path:
+                        await channel.send(
+                            content=content,
+                            file=discord.File(cover_path, filename=os.path.basename(cover_path))
+                        )
+                    else:
+                        await channel.send(content=content)
+                else:
+                    failed_codes.append(code)
+            else:
+                failed_codes.append(code)
+
+        if processing_msg:
+            await processing_msg.delete()
+
+        return passed_codes, failed_codes
+
+    @staticmethod
     def _is_valid_comic_code(code: str) -> bool:
         return any(p.match(code.upper()) for p in _COMIC_CODE_PATTERNS)
 
@@ -172,7 +209,7 @@ class EventsCog(commands.Cog):
         except discord.NotFound:
             pass
 
-    async def _fetch_code(self, code: str, retries: int = 3, retry_delay: float = 2.0) -> tuple[str, str | None]:
+    async def _fetch_code(self, code: str, retries: int = 3, retry_delay: float = 2.0) -> tuple[bool, str, str | None]:
         cover_path = f'{_CODE_COVER_DIR}/{code}.jpg'
 
         title_flag, title = False, None
@@ -187,7 +224,7 @@ class EventsCog(commands.Cog):
 
         if not title_flag:
             logger.print(f'Could not find title for code "{code}" after {retries} attempt(s)', LogLevel.WARN)
-            return (f'Could not find title for code "{code}"', None)
+            return (False, f'Could not find title for code "{code}"', None)
 
         has_cover = await asyncio.to_thread(self.code_parser.download_cover, code, cover_path)
         logger.print(f'Parsed code "{code}": has_cover={has_cover}', LogLevel.INFO)
@@ -196,17 +233,17 @@ class EventsCog(commands.Cog):
         escaped_title = discord.utils.escape_markdown(title)
         content = f'**[{code} | {escaped_title}]({self.code_parser.get_video_url(code)})**'
         actual_cover = cover_path if has_cover and os.path.isfile(cover_path) else None
-        return (content, actual_cover)
+        return (True, content, actual_cover)
 
-    async def _fetch_comic(self, code: str, comic_type: ComicType) -> tuple[str, str | None]:
+    async def _fetch_comic(self, code: str, comic_type: ComicType) -> tuple[bool, str, str | None]:
         match comic_type:
             case ComicType.NHENTAI:
                 parser = NhentaiComicParser()
             case ComicType.WNACG | ComicType.JM:
-                return (f'`{code}` ({comic_type.name}) is not supported yet.', None)
+                return (False, f'`{code}` ({comic_type.name}) is not supported yet.', None)
             case _:
                 logger.print(f'Unsupported comic type for code "{code}"', LogLevel.WARN)
-                return (f'Unsupported comic code "{code}"', None)
+                return (False, f'Unsupported comic code "{code}"', None)
 
         cover_path = f'{_COMIC_COVER_DIRS[comic_type]}/{code}.jpg'
 
@@ -217,10 +254,10 @@ class EventsCog(commands.Cog):
 
         if not title_flag:
             logger.print(f'Could not find title for comic "{code}"', LogLevel.WARN)
-            return (f'Could not find title for comic "{code}"', None)
+            return (False, f'Could not find title for comic "{code}"', None)
 
         title = title or code
         escaped_title = discord.utils.escape_markdown(title)
         content = f'**[{code} | {escaped_title}]({parser.get_comic_url(code)})**'
         actual_cover = cover_path if has_cover and os.path.isfile(cover_path) else None
-        return (content, actual_cover)
+        return (True, content, actual_cover)
