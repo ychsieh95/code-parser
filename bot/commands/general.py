@@ -52,6 +52,8 @@ class GeneralCog(commands.Cog):
         embed.add_field(
             name='General Commands',
             value=(
+                '`/find_code <codes…>` — Fetch video code(s) directly\n'
+                '`/find_comic <codes…>` — Fetch comic code(s) directly\n'
                 '`/status` — Show active parsing modes for this channel\n'
                 '`/updatelog` — Show recent bot update history\n'
                 '`/help` — Show this help message'

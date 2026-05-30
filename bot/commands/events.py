@@ -85,6 +85,36 @@ class EventsCog(commands.Cog):
         summary = self._build_summary(passed_codes, failed_codes)
         await interaction.followup.send(summary, ephemeral=True)
 
+    @app_commands.command(name='find_code', description='Fetch one or more video codes directly')
+    @app_commands.describe(codes='Video codes to fetch, separated by spaces')
+    async def cmd_find_code(self, interaction: discord.Interaction, codes: str):
+        lines = codes.split()
+        if not lines:
+            await interaction.response.send_message('No codes provided.', ephemeral=True)
+            return
+
+        logger.print(f'Received {len(lines)} code(s) from {interaction.user} in #{interaction.channel.name}', LogLevel.INFO)
+
+        await interaction.response.defer(ephemeral=True)
+        passed_codes, failed_codes = await self._process_lines(lines, interaction.channel, {MODE_CODE}, interaction.user.mention)
+        summary = self._build_summary(passed_codes, failed_codes)
+        await interaction.followup.send(summary, ephemeral=True)
+
+    @app_commands.command(name='find_comic', description='Fetch one or more comic codes directly')
+    @app_commands.describe(codes='Comic codes to fetch, separated by spaces')
+    async def cmd_find_comic(self, interaction: discord.Interaction, codes: str):
+        lines = codes.split()
+        if not lines:
+            await interaction.response.send_message('No codes provided.', ephemeral=True)
+            return
+
+        logger.print(f'Received {len(lines)} comic code(s) from {interaction.user} in #{interaction.channel.name}', LogLevel.INFO)
+
+        await interaction.response.defer(ephemeral=True)
+        passed_codes, failed_codes = await self._process_lines(lines, interaction.channel, {MODE_COMIC}, interaction.user.mention)
+        summary = self._build_summary(passed_codes, failed_codes)
+        await interaction.followup.send(summary, ephemeral=True)
+
     @app_commands.command(name='set_latency', description='Set retry delay (seconds) between fetch attempts for code parsing')
     @app_commands.describe(seconds='Delay in seconds between retries (0.0 – 60.0)')
     @app_commands.default_permissions(administrator=True)
