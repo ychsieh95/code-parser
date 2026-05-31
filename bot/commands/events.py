@@ -62,8 +62,9 @@ class EventsCog(commands.Cog):
 
         await self._delete_message(message)
         passed_codes, failed_codes = await self._process_lines(lines, message.channel, active_modes, message.author.mention)
-        summary = self._build_summary(passed_codes, failed_codes)
-        await message.channel.send(f'{message.author.mention}\n{summary}')
+        if len(lines) > 1:
+            summary = self._build_summary(passed_codes, failed_codes)
+            await message.channel.send(f'{message.author.mention}\n{summary}')
 
     @app_commands.command(name='parse', description='Parse one or more codes')
     @app_commands.describe(codes='Codes to parse, separated by spaces')
