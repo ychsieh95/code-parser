@@ -115,6 +115,39 @@ class EventsCog(commands.Cog):
         summary = self._build_summary(passed_codes, failed_codes)
         await interaction.followup.send(summary, ephemeral=True)
 
+    @app_commands.command(name='search', description='Search for video codes by keywords and fetch each result')
+    @app_commands.describe(keywords='Search keywords', num='Number of results to fetch (default 10)')
+    async def cmd_search(self, interaction: discord.Interaction, keywords: str, num: int = 10):
+        await interaction.response.defer(ephemeral=True)
+        ok, codes = await asyncio.to_thread(self.code_parser.search, keywords, None, num)
+        if not ok or not codes:
+            await interaction.followup.send(f'No results for "{keywords}".', ephemeral=True)
+            return
+        passed_codes, failed_codes = await self._process_lines(codes, interaction.channel, {MODE_CODE}, interaction.user.mention)
+        await interaction.followup.send(self._build_summary(passed_codes, failed_codes), ephemeral=True)
+
+    @app_commands.command(name='get_latest', description='Fetch the latest video codes')
+    @app_commands.describe(num='Number of results to fetch (default 10)')
+    async def cmd_get_latest(self, interaction: discord.Interaction, num: int = 10):
+        await interaction.response.defer(ephemeral=True)
+        ok, codes = await asyncio.to_thread(self.code_parser.get_latest, num)
+        if not ok or not codes:
+            await interaction.followup.send('No latest codes found.', ephemeral=True)
+            return
+        passed_codes, failed_codes = await self._process_lines(codes, interaction.channel, {MODE_CODE}, interaction.user.mention)
+        await interaction.followup.send(self._build_summary(passed_codes, failed_codes), ephemeral=True)
+
+    @app_commands.command(name='get_suggestion', description='Fetch suggested video codes for a given code')
+    @app_commands.describe(code='Video code to get suggestions for', num='Number of results to fetch (default 10)')
+    async def cmd_get_suggestion(self, interaction: discord.Interaction, code: str, num: int = 10):
+        await interaction.response.defer(ephemeral=True)
+        ok, codes = await asyncio.to_thread(self.code_parser.get_suggestion, code, num)
+        if not ok or not codes:
+            await interaction.followup.send(f'No suggestions found for "{code}".', ephemeral=True)
+            return
+        passed_codes, failed_codes = await self._process_lines(codes, interaction.channel, {MODE_CODE}, interaction.user.mention)
+        await interaction.followup.send(self._build_summary(passed_codes, failed_codes), ephemeral=True)
+
     @app_commands.command(name='set_latency', description='Set retry delay (seconds) between fetch attempts for code parsing')
     @app_commands.describe(seconds='Delay in seconds between retries (0.0 – 60.0)')
     @app_commands.default_permissions(administrator=True)

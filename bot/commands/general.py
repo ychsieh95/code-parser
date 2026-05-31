@@ -54,6 +54,9 @@ class GeneralCog(commands.Cog):
             value=(
                 '`/find_code <codes…>` — Fetch video code(s) directly\n'
                 '`/find_comic <codes…>` — Fetch comic code(s) directly\n'
+                '`/search <keywords> [num]` — Search for video codes by keywords\n'
+                '`/get_latest [num]` — Fetch the latest video codes\n'
+                '`/get_suggestion <code> [num]` — Fetch suggested codes for a code\n'
                 '`/status` — Show active parsing modes for this channel\n'
                 '`/updatelog` — Show recent bot update history\n'
                 '`/help` — Show this help message'

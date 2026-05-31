@@ -1,5 +1,9 @@
+import hashlib
+import hmac
 import os
 import re
+import time
+import uuid
 from curl_cffi import requests
 from bs4 import BeautifulSoup
 
@@ -14,6 +18,10 @@ class CodeParser:
 
         self.video_url_prefix = 'https://missav.ws'
         self.cover_url_prefix = 'https://fourhoi.com'
+
+        self._recombee_base  = 'https://client-rapi-missav.recombee.com'
+        self._recombee_db    = 'missav-default'
+        self._recombee_token = 'Ikkg568nlM51RHvldlPvc2GzZPE9R4XGzaH9Qj4zK9npbbbTly1gj9K4mgRn0QlV'
 
     @staticmethod
     def get_scraper():
@@ -61,3 +69,80 @@ class CodeParser:
 
     def fix_codes(self, codes: list[str]) -> list[str]:
         return [self.fix_code(c) for c in codes]
+
+    def _recombee_sign(self, path: str) -> str:
+        n   = f'/{self._recombee_db}{path}?frontend_timestamp={int(time.time())}'
+        sig = hmac.new(self._recombee_token.encode(), n.encode(), hashlib.sha1).hexdigest()
+        return f'{self._recombee_base}{n}&frontend_sign={sig}'
+
+    _FILTER_EXPRS: dict[str, str] = {
+        'jav':              '\'type\' == "jav"',
+        'uncensored':       '\'type\' == "uncensored"',
+        'uncensored-leak':  '\'type\' == "uncensored-leak"',
+        'individual':       '\'type\' == "individual"',
+        'chinese-subtitle': "'has_chinese_subtitle' == true",
+    }
+
+    def search(self, keywords: str, filter: str | None = None, count: int = 10) -> tuple[bool, list[str]]:
+        user_id = str(uuid.uuid4())
+        url     = self._recombee_sign(f'/search/users/{user_id}/items/')
+        body: dict = {
+            'searchQuery':      keywords,
+            'count':            count,
+            'scenario':         'search',
+            'cascadeCreate':    True,
+            'returnProperties': False,
+        }
+        if filter:
+            body['filter'] = self._FILTER_EXPRS.get(filter, filter)
+        try:
+            r = self.scraper.post(url, json=body, proxies=self.proxy, timeout=10)
+            r.raise_for_status()
+        except Exception:
+            return False, []
+        data = r.json()
+        return True, [item['id'].upper() for item in data.get('recomms', [])]
+
+    def get_latest(self, count: int = 10) -> tuple[bool, list[str]]:
+        codes = []
+        seen  = set()
+        page  = 1
+        while len(codes) < count:
+            try:
+                r = self.scraper.get(f'{self.video_url_prefix}/new?page={page}', proxies=self.proxy, timeout=10)
+                r.raise_for_status()
+            except Exception:
+                return False, []
+            soup       = BeautifulSoup(r.text, 'html.parser')
+            page_codes = []
+            for a in soup.find_all('a', href=True):
+                seg = a['href'].rstrip('/').split('/')[-1]
+                m   = re.match(r'^((?:fc2-ppv-|[a-zA-Z]{2,5}-)\d+)', seg, re.IGNORECASE)
+                if m:
+                    code = m.group(1).upper()
+                    if code not in seen:
+                        seen.add(code)
+                        page_codes.append(code)
+            if not page_codes:
+                break
+            codes.extend(page_codes)
+            page += 1
+        return True, codes[:count]
+
+    def get_suggestion(self, code: str, count: int = 10) -> tuple[bool, list[str]]:
+        user_id = str(uuid.uuid4())
+        url     = self._recombee_sign(f'/recomms/items/{code.lower()}/items/')
+        body    = {
+            'targetUserId':     user_id,
+            'count':            count,
+            'scenario':         'desktop-watch-next-side',
+            'cascadeCreate':    True,
+            'returnProperties': False,
+        }
+        try:
+            r = self.scraper.post(url, json=body, proxies=self.proxy, timeout=10)
+            r.raise_for_status()
+        except Exception:
+            return False, []
+        data = r.json()
+        return True, [item['id'].upper() for item in data.get('recomms', [])]

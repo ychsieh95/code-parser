@@ -34,12 +34,53 @@ def get_discord_log(code: str, title: str, url: str) -> str:
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description='Code Parser Script')
-    parser.add_argument('--codes'      , nargs='+', type=str, help='Codes to parse')
-    parser.add_argument('--input-file' ,            type=str, help='Path to the input file containing codes')
-    parser.add_argument('--notify'     , nargs='?', type=str, default=None, choices=['discord', 'telegram', 'all'])
-    parser.add_argument('--output-file',            type=str, help='Path to the output file to save results')
+    parser.add_argument('--codes'         , nargs='+', type=str, help='Codes to parse')
+    parser.add_argument('--input-file'    ,            type=str, help='Path to the input file containing codes')
+    parser.add_argument('--notify'        , nargs='?', type=str, default=None, choices=['discord', 'telegram', 'all'])
+    parser.add_argument('--output-file'   ,            type=str, help='Path to the output file to save results')
+    parser.add_argument('--search'        ,            type=str, help='Search keywords and return number of results')
+    parser.add_argument('--filter'        ,            type=str, help='Filter search results (jav, uncensored, uncensored-leak, individual, chinese-subtitle)')
+    parser.add_argument('--get-latest'    , nargs='?', type=int, const=10, default=None, metavar='NUM',  help='Fetch latest N codes (default 10)')
+    parser.add_argument('--get-suggestion',            type=str, help='Fetch suggested codes for a given code')
     args = parser.parse_args()
     logger.print(args, level=LogLevel.INFO)
+
+    if args.filter and not args.search:
+        parser.error('--filter requires --search')
+
+    if args.search:
+        code_parser  = CodeParser()
+        ok, codes    = code_parser.search(args.search, filter=args.filter)
+        if ok:
+            label = f' [{args.filter}]' if args.filter else ''
+            logger.print(f'Search "{args.search}"{label}: {len(codes)} result(s)', level=LogLevel.OK)
+            for i, code in enumerate(codes, 1):
+                logger.print(f'  {i}. {code}', level=LogLevel.OK)
+        else:
+            logger.print(f'Search "{args.search}" failed', level=LogLevel.FAILED)
+        return
+
+    if args.get_latest is not None:
+        code_parser  = CodeParser()
+        ok, codes    = code_parser.get_latest(count=args.get_latest)
+        if ok:
+            logger.print(f'Latest ({len(codes)} code(s)):', level=LogLevel.OK)
+            for i, code in enumerate(codes, 1):
+                logger.print(f'  {i}. {code}', level=LogLevel.OK)
+        else:
+            logger.print('Failed to fetch latest codes', level=LogLevel.FAILED)
+        return
+
+    if args.get_suggestion:
+        code_parser     = CodeParser()
+        ok, suggestions = code_parser.get_suggestion(args.get_suggestion)
+        if ok:
+            logger.print(f'Suggestions for "{args.get_suggestion}": {len(suggestions)} code(s)', level=LogLevel.OK)
+            for i, code in enumerate(suggestions, 1):
+                logger.print(f'  {i}. {code}', level=LogLevel.OK)
+        else:
+            logger.print(f'Failed to fetch suggestions for "{args.get_suggestion}"', level=LogLevel.FAILED)
+        return
 
     if not args.codes and not args.input_file:
         logger.print('Please provide either a code or an input file!', LogLevel.FAILED)

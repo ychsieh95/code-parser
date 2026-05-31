@@ -89,11 +89,19 @@ DEV_GUILD_ID=123456789 python3 -m bot.main
 | `/enable_parse_comic` | Enable comic parsing for the current channel |
 | `/disable_parse_comic` | Disable comic parsing for the current channel |
 | `/guild_status` | Show parsing status for all channels in the server |
+| `/set_retry_num <count>` | Set number of fetch attempts per code (1–10) |
+| `/set_latency <seconds>` | Set retry delay between fetch attempts (0.0–60.0s) |
 
 **General**
 
 | Command | Description |
 |---|---|
+| `/parse <codes…>` | Parse codes using the active modes for this channel |
+| `/find_code <codes…>` | Fetch video code(s) directly, regardless of channel mode |
+| `/find_comic <codes…>` | Fetch comic code(s) directly, regardless of channel mode |
+| `/search <keywords> [num]` | Search for video codes by keywords (default 10 results) |
+| `/get_latest [num]` | Fetch the latest video codes (default 10 results) |
+| `/get_suggestion <code> [num]` | Fetch suggested codes for a given code (default 10) |
 | `/status` | Show active parsing modes for the current channel |
 | `/help` | Show available commands |
 | `/updatelog` | Show recent update history |
