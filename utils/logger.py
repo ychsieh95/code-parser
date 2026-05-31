@@ -1,7 +1,7 @@
 from datetime   import datetime
 from enum       import IntEnum
-from os         import system, name
-
+from os         import name
+from subprocess import run as _run
 
 MAX_TITLE_LENGTH = 6
 
@@ -63,9 +63,9 @@ class Logger:
             print("\x1b[2J\033[H")
         else:
             if name == 'nt':
-                _ = system('cls')
+                _run(['cls'], shell=True)
             else:
-                _ = system('clear')
+                _run(['clear'])
 
     def __display(self):
         if self.clear_previous:
