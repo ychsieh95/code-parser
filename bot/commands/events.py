@@ -303,6 +303,7 @@ class EventsCog(commands.Cog):
         match comic_type:
             case ComicType.NHENTAI:
                 parser = NhentaiComicParser()
+                code = re.sub(r'^[nN]', '', code)
             case ComicType.WNACG | ComicType.JM:
                 return (False, f'`{code}` ({comic_type.name}) is not supported yet.', None)
             case _:
