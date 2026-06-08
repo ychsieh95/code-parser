@@ -45,6 +45,8 @@ class GeneralCog(commands.Cog):
                 '`/disable_parse_code` — Disable video code parsing for this channel\n'
                 '`/enable_parse_comic` — Enable comic code parsing for this channel\n'
                 '`/disable_parse_comic` — Disable comic code parsing for this channel\n'
+                '`/enable_message_deletion` — Enable deletion of original messages for this channel\n'
+                '`/disable_message_deletion` — Disable deletion of original messages for this channel\n'
                 '`/guild_status` — Show parsing status for all channels in this server'
             ),
             inline=False
@@ -86,8 +88,10 @@ class GeneralCog(commands.Cog):
 
     @app_commands.command(name='status', description='Show current parsing status for this channel')
     async def cmd_status(self, interaction: discord.Interaction):
-        modes = self.db.get_modes(interaction.channel_id)
-        if modes:
-            await interaction.response.send_message(f'**Parsing status:** {", ".join(sorted(modes))}', ephemeral=True)
-        else:
-            await interaction.response.send_message('No parsing mode is enabled for this channel.', ephemeral=True)
+        modes     = self.db.get_modes(interaction.channel_id)
+        deletion  = self.db.message_deletion_enabled(interaction.channel_id)
+        modes_str = ", ".join(sorted(modes)) if modes else 'none'
+        await interaction.response.send_message(
+            f'**Parsing status:** {modes_str}\n**Message deletion:** {"enabled" if deletion else "disabled"}',
+            ephemeral=True
+        )

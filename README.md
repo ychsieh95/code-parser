@@ -88,6 +88,8 @@ DEV_GUILD_ID=123456789 python3 -m bot.main
 | `/disable_parse_code` | Disable video code parsing for the current channel |
 | `/enable_parse_comic` | Enable comic parsing for the current channel |
 | `/disable_parse_comic` | Disable comic parsing for the current channel |
+| `/enable_message_deletion` | Enable deletion of original messages for the current channel |
+| `/disable_message_deletion` | Disable deletion of original messages for the current channel |
 | `/guild_status` | Show parsing status for all channels in the server |
 | `/set_retry_num <count>` | Set number of fetch attempts per code (1–10) |
 | `/set_latency <seconds>` | Set retry delay between fetch attempts (0.0–60.0s) |

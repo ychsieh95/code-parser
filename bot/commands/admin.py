@@ -56,6 +56,28 @@ class AdminCog(commands.Cog):
             logger.print(f'Channel {interaction.channel_id}: comic parsing not enabled', LogLevel.WARN)
             await interaction.response.send_message('Comic parsing is not enabled for this channel.', ephemeral=True)
 
+    @app_commands.command(name='enable_message_deletion', description='Enable automatic deletion of original messages for this channel')
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.channel_id)
+    async def cmd_enable_message_deletion(self, interaction: discord.Interaction):
+        if await self.db.set_message_deletion(interaction.channel_id, True):
+            logger.print(f'Channel {interaction.channel_id}: message deletion enabled', LogLevel.OK)
+            await interaction.response.send_message('Message deletion is now **enabled** for this channel.')
+        else:
+            logger.print(f'Channel {interaction.channel_id}: message deletion already enabled', LogLevel.WARN)
+            await interaction.response.send_message('Message deletion is already enabled for this channel.', ephemeral=True)
+
+    @app_commands.command(name='disable_message_deletion', description='Disable automatic deletion of original messages for this channel')
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.channel_id)
+    async def cmd_disable_message_deletion(self, interaction: discord.Interaction):
+        if await self.db.set_message_deletion(interaction.channel_id, False):
+            logger.print(f'Channel {interaction.channel_id}: message deletion disabled', LogLevel.INFO)
+            await interaction.response.send_message('Message deletion is now **disabled** for this channel.')
+        else:
+            logger.print(f'Channel {interaction.channel_id}: message deletion already disabled', LogLevel.WARN)
+            await interaction.response.send_message('Message deletion is already disabled for this channel.', ephemeral=True)
+
     @app_commands.command(name='guild_status', description='Show parsing status for all channels in this server')
     @app_commands.default_permissions(administrator=True)
     async def cmd_guild_status(self, interaction: discord.Interaction):

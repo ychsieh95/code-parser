@@ -51,18 +51,21 @@ class EventsCog(commands.Cog):
         if not active_modes:
             return
 
+        should_delete = self.db.message_deletion_enabled(message.channel.id)
         lines = [line.strip() for line in message.content.splitlines() if line.strip()]
 
         if not lines:
-            await self._delete_message(message)
+            if should_delete:
+                await self._delete_message(message)
             await message.channel.send(f'{message.author.mention} Invalid input: message contains no valid content.')
             return
 
         logger.print(f'Received {len(lines)} line(s) from {message.author} in #{message.channel.name}', LogLevel.INFO)
 
-        await self._delete_message(message)
+        if should_delete:
+            await self._delete_message(message)
         passed_codes, failed_codes = await self._process_lines(lines, message.channel, active_modes, message.author.mention)
-        if len(lines) > 1:
+        if len(lines) > 1 or failed_codes:
             summary = self._build_summary(passed_codes, failed_codes)
             await message.channel.send(f'{message.author.mention}\n{summary}')
 
@@ -173,13 +176,20 @@ class EventsCog(commands.Cog):
 
     @staticmethod
     def _build_summary(passed_codes: list[str], failed_codes: list[str]) -> str:
-        total  = len(passed_codes) + len(failed_codes)
-        passed = len(passed_codes)
-        failed = len(failed_codes)
-        lines  = [f'**✅ Result: {passed}/{total} succeeded**']
+        total = len(passed_codes) + len(failed_codes)
+
+        lines = [
+            '### 📊 Execution Summary',
+            f"> **Status:** {'❌ Attention Required' if failed_codes else '✅ All Clear'}",
+            f'> **Progress:** `{len(passed_codes)}` / `{total}` completed\n'
+        ]
+
         if failed_codes:
-            lines.append(f'❌ Failed ({failed}):')
-            lines.extend(f'- `{c}`' for c in failed_codes)
+            lines.append('**Failed List:**')
+            lines.append('```diff')
+            lines.extend(f'- {c}' for c in failed_codes)
+            lines.append('```')
+
         return '\n'.join(lines)
 
     async def _process_lines(
