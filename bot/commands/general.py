@@ -47,6 +47,7 @@ class GeneralCog(commands.Cog):
                 '`/disable_parse_comic` — Disable comic code parsing for this channel\n'
                 '`/enable_message_deletion` — Enable deletion of original messages for this channel\n'
                 '`/disable_message_deletion` — Disable deletion of original messages for this channel\n'
+                '`/set_read_action <mode>` — Set the action taken once every member has marked a result message as read\n'
                 '`/guild_status` — Show parsing status for all channels in this server'
             ),
             inline=False
@@ -88,10 +89,13 @@ class GeneralCog(commands.Cog):
 
     @app_commands.command(name='status', description='Show current parsing status for this channel')
     async def cmd_status(self, interaction: discord.Interaction):
-        modes     = self.db.get_modes(interaction.channel_id)
-        deletion  = self.db.message_deletion_enabled(interaction.channel_id)
-        modes_str = ", ".join(sorted(modes)) if modes else 'none'
+        modes       = self.db.get_modes(interaction.channel_id)
+        deletion    = self.db.message_deletion_enabled(interaction.channel_id)
+        read_action = self.db.read_action(interaction.channel_id)
+        modes_str   = ", ".join(sorted(modes)) if modes else 'none'
         await interaction.response.send_message(
-            f'**Parsing status:** {modes_str}\n**Message deletion:** {"enabled" if deletion else "disabled"}',
+            f'**Parsing status:** {modes_str}\n'
+            f'**Message deletion:** {"enabled" if deletion else "disabled"}\n'
+            f'**Read action:** {read_action}',
             ephemeral=True
         )

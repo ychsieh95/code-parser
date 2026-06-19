@@ -1,5 +1,5 @@
 import discord
-from bot.constants import MODE_CODE, MODE_COMIC
+from bot.constants import READ_ACTION_AUTO_DELETE, READ_ACTION_DELETE, READ_ACTION_NONE, MODE_CODE, MODE_COMIC
 from bot.db import Database
 from bot.logger import logger
 from discord import app_commands
@@ -77,6 +77,23 @@ class AdminCog(commands.Cog):
         else:
             logger.print(f'Channel {interaction.channel_id}: message deletion already disabled', LogLevel.WARN)
             await interaction.response.send_message('Message deletion is already disabled for this channel.', ephemeral=True)
+
+    @app_commands.command(name='set_read_action', description='Set the action once every member who can see this channel has marked a result message as read')
+    @app_commands.describe(mode='Action to apply once all non-bot members who can view the channel have marked it read')
+    @app_commands.choices(mode=[
+        app_commands.Choice(name='None', value=READ_ACTION_NONE),
+        app_commands.Choice(name='Mark for delete', value=READ_ACTION_AUTO_DELETE),
+        app_commands.Choice(name='Delete', value=READ_ACTION_DELETE),
+    ])
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.cooldown(1, 5.0, key=lambda i: i.channel_id)
+    async def cmd_set_read_action(self, interaction: discord.Interaction, mode: app_commands.Choice[str]):
+        if await self.db.set_read_action(interaction.channel_id, mode.value):
+            logger.print(f'Channel {interaction.channel_id}: read action set to {mode.value}', LogLevel.OK)
+            await interaction.response.send_message(f'Read-action mode set to **{mode.name}** for this channel.')
+        else:
+            logger.print(f'Channel {interaction.channel_id}: read action already {mode.value}', LogLevel.WARN)
+            await interaction.response.send_message(f'Read-action mode is already **{mode.name}** for this channel.', ephemeral=True)
 
     @app_commands.command(name='guild_status', description='Show parsing status for all channels in this server')
     @app_commands.default_permissions(administrator=True)

@@ -2,9 +2,10 @@ import asyncio
 import discord
 import os
 import re
-from bot.constants import MODE_CODE, MODE_COMIC
+from bot.constants import READ_ACTION_NONE, MODE_CODE, MODE_COMIC
 from bot.db import Database
 from bot.logger import logger
+from bot.views import ReadActionView
 from config.settings import COVER_SAVE_DIR as _COVER_DIRS
 from discord import app_commands
 from discord.ext import commands
@@ -253,13 +254,17 @@ class EventsCog(commands.Cog):
                     await processing_msg.edit(content=build_status(completed))
                 if ok:
                     passed_codes.append(code)
+                    view = None
+                    if self.db.read_action(channel.id) != READ_ACTION_NONE:
+                        view = ReadActionView(self.db, channel)
                     if cover_path:
                         await channel.send(
                             content=content,
-                            file=discord.File(cover_path, filename=os.path.basename(cover_path))
+                            file=discord.File(cover_path, filename=os.path.basename(cover_path)),
+                            view=view,
                         )
                     else:
-                        await channel.send(content=content)
+                        await channel.send(content=content, view=view)
                 else:
                     failed_codes.append(code)
             else:

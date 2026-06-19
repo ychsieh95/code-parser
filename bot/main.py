@@ -23,6 +23,7 @@ class CodeParserBot(commands.Bot):
     def __init__(self, db: Database):
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members         = True
         super().__init__(command_prefix=commands.when_mentioned, intents=intents)
         self.db = db
 

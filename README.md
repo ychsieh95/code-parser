@@ -13,8 +13,9 @@ code-parser/
 │   ├── db.py               # SQLite persistence (channel settings)
 │   ├── constants.py        # Shared mode constants
 │   ├── logger.py           # Shared logger instance
+│   ├── views.py            # ReadActionView (checkbox button on result messages)
 │   └── commands/
-│       ├── admin.py        # Enable/disable parsing, guild status
+│       ├── admin.py        # Enable/disable parsing, guild status, read action
 │       ├── events.py       # Message handler (on_message)
 │       └── general.py      # /help, /status, /updatelog
 ├── cli/
@@ -62,6 +63,10 @@ Edit `config/settings.py` and fill in:
 | `TELEGRAM_BOT_TOKEN` | Telegram bot token (CLI notify) |
 | `TELEGRAM_CHANNEL_ID` | Telegram channel ID (CLI notify) |
 
+The bot requires the **Server Members Intent** (privileged) to be enabled in the
+[Discord Developer Portal](https://discord.com/developers/applications) for your application —
+this is needed to determine who can see a channel for `/set_read_action`.
+
 ---
 
 ## Discord Bot
@@ -90,6 +95,7 @@ DEV_GUILD_ID=123456789 python3 -m bot.main
 | `/disable_parse_comic` | Disable comic parsing for the current channel |
 | `/enable_message_deletion` | Enable deletion of original messages for the current channel |
 | `/disable_message_deletion` | Disable deletion of original messages for the current channel |
+| `/set_read_action <mode>` | Set the action on a parsing result message once every non-bot member who can see the channel has marked it as read (`None` (default) / `Mark for delete` / `Delete`) |
 | `/guild_status` | Show parsing status for all channels in the server |
 | `/set_retry_num <count>` | Set number of fetch attempts per code (1–10) |
 | `/set_latency <seconds>` | Set retry delay between fetch attempts (0.0–60.0s) |
@@ -116,6 +122,13 @@ When a parsing mode is enabled for a channel, the bot:
 2. Deletes the original message
 3. Looks up the title and cover image for each code
 4. Posts a formatted reply with a link and cover image
+
+If `/set_read_action` is set to something other than `None` for the channel, each result
+message also gets a "☑️ Mark as read" button. Once every non-bot member who can see the
+channel has clicked it, the bot applies the configured action:
+
+- **Mark for delete** — edits the message to `[REMOVED] <original content>` and strips the cover image
+- **Delete** — deletes the message outright
 
 **Supported code formats**
 
