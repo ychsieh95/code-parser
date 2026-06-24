@@ -130,6 +130,9 @@ channel has clicked it, the bot applies the configured action:
 - **Mark for delete** — edits the message to `[REMOVED] <original content>` and strips the cover image
 - **Delete** — deletes the message outright
 
+Who has clicked is stored in SQLite (not just in memory), and the button is registered as a
+persistent view on startup — so it keeps working, with progress intact, even after a bot restart.
+
 **Supported code formats**
 
 | Type | Examples |

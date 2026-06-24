@@ -11,6 +11,7 @@ class Database:
         self._cache: dict[int, set[str]] = {}
         self._deletion_cache: dict[int, bool] = {}
         self._read_action_cache: dict[int, str] = {}
+        self._read_receipts_cache: dict[int, set[int]] = {}
 
     async def connect(self) -> None:
         DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -34,10 +35,18 @@ class Database:
                 mode       TEXT    NOT NULL
             )
         """)
+        await self._db.execute("""
+            CREATE TABLE IF NOT EXISTS message_read_receipts (
+                message_id INTEGER NOT NULL,
+                user_id    INTEGER NOT NULL,
+                PRIMARY KEY (message_id, user_id)
+            )
+        """)
         await self._db.commit()
-        self._cache             = await self._load_all()
-        self._deletion_cache    = await self._load_deletion_settings()
-        self._read_action_cache = await self._load_read_action_settings()
+        self._cache               = await self._load_all()
+        self._deletion_cache      = await self._load_deletion_settings()
+        self._read_action_cache   = await self._load_read_action_settings()
+        self._read_receipts_cache = await self._load_read_receipts()
 
     async def close(self) -> None:
         if self._db:
@@ -60,6 +69,14 @@ class Database:
         async with self._db.execute("SELECT channel_id, mode FROM channel_read_action") as cursor:
             rows = await cursor.fetchall()
         return {channel_id: mode for channel_id, mode in rows}
+
+    async def _load_read_receipts(self) -> dict[int, set[int]]:
+        async with self._db.execute("SELECT message_id, user_id FROM message_read_receipts") as cursor:
+            rows = await cursor.fetchall()
+        result: dict[int, set[int]] = {}
+        for message_id, user_id in rows:
+            result.setdefault(message_id, set()).add(user_id)
+        return result
 
     def get_modes(self, channel_id: int) -> set[str]:
         """Synchronous cache read — safe for use in on_message hot path."""
@@ -117,6 +134,26 @@ class Database:
         await self._db.commit()
         self._read_action_cache[channel_id] = mode
         return True
+
+    def get_read_receipts(self, message_id: int) -> set[int]:
+        """Synchronous cache read — safe for use in component interaction callbacks."""
+        return self._read_receipts_cache.get(message_id, set())
+
+    async def add_read_receipt(self, message_id: int, user_id: int) -> None:
+        await self._db.execute(
+            "INSERT OR IGNORE INTO message_read_receipts (message_id, user_id) VALUES (?, ?)",
+            (message_id, user_id),
+        )
+        await self._db.commit()
+        self._read_receipts_cache.setdefault(message_id, set()).add(user_id)
+
+    async def clear_read_receipts(self, message_id: int) -> None:
+        await self._db.execute(
+            "DELETE FROM message_read_receipts WHERE message_id = ?",
+            (message_id,),
+        )
+        await self._db.commit()
+        self._read_receipts_cache.pop(message_id, None)
 
     async def disable_mode(self, channel_id: int, mode: str) -> bool:
         """Returns True if the mode was actually disabled."""

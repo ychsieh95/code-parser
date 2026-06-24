@@ -7,6 +7,7 @@ from bot.commands.events import EventsCog
 from bot.commands.general import GeneralCog
 from bot.db import Database
 from bot.logger import logger
+from bot.views import ReadActionView
 from config.settings import BOT_TOKEN
 from discord import app_commands
 from discord.ext import commands
@@ -33,6 +34,8 @@ class CodeParserBot(commands.Bot):
         await self.add_cog(AdminCog(self, self.db))
         await self.add_cog(GeneralCog(self, self.db))
         await self.add_cog(EventsCog(self, self.db, code_parser, comic_parser))
+
+        self.add_view(ReadActionView(self.db))
 
         if DEV_GUILD_ID:
             guild = discord.Object(id=DEV_GUILD_ID)
