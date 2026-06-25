@@ -1,8 +1,11 @@
+import hashlib
 import os
 import re
 from curl_cffi import requests
 from enum import IntEnum
 from bs4 import BeautifulSoup
+from io import BytesIO
+from PIL import Image
 
 
 class ComicType(IntEnum):
@@ -121,11 +124,107 @@ class WnacgComicParser(ComicParser):
 
 
 class JmComicParser(ComicParser):
+    """18comic.vip (禁漫天堂). Page images are scrambled into shuffled horizontal strips
+    as anti-scraping; _descramble() reassembles them using the site's own algorithm
+    (segment count derived from a hash of the album id + page filename)."""
+
+    # Below this album id, images aren't scrambled at all; below this, scrambling
+    # always uses 10 segments. These thresholds and the segment-count formula mirror
+    # the site's own (reverse-engineered) scrambling scheme.
+    _SCRAMBLE_268850 = 268850
+    _SCRAMBLE_421926 = 421926
+
+    _RE_SCRAMBLE_ID = re.compile(r'var scramble_id = (\d+);')
+    _RE_TITLE       = re.compile(r'<h1[^>]*class="pull-left"[^>]*>([\s\S]*?)<')
+    _RE_FIRST_IMAGE = re.compile(r'data-original="(.*?)"[^>]*?id="album_photo[^>]*?data-page="0"')
+
+    def __init__(self):
+        super().__init__()
+        self.url_prefix = 'https://18comic.vip/photo'
+
     def get_comic_url(self, code: str) -> str:
-        raise NotImplementedError
+        return f'{self.url_prefix}/{code}'
+
     def get_title(self, code: str) -> tuple[bool, str | None]:
-        raise NotImplementedError
+        try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
+            content.raise_for_status()
+        except Exception:
+            return False, None
+        return True, self._parse_title(content.text)
+
     def download_cover(self, code: str, cover_save_path: str) -> bool:
-        raise NotImplementedError
+        try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
+            content.raise_for_status()
+        except Exception:
+            return False
+        return self._download_first_image(code, content.text, cover_save_path)
+
     def fetch_and_save(self, code: str, cover_save_path: str) -> tuple[bool, str | None, bool]:
-        raise NotImplementedError
+        """Fetch title and cover in a single page request."""
+        try:
+            content = self.scraper.get(f'{self.url_prefix}/{code}', proxies=self.proxy, timeout=10)
+            content.raise_for_status()
+        except Exception:
+            return False, None, False
+
+        title       = self._parse_title(content.text)
+        cover_saved = self._download_first_image(code, content.text, cover_save_path)
+        return True, title, cover_saved
+
+    @classmethod
+    def _parse_title(cls, html: str) -> str | None:
+        m = cls._RE_TITLE.search(html)
+        return m.group(1).strip().rstrip('|').strip() if m else None
+
+    def _download_first_image(self, code: str, html: str, cover_save_path: str) -> bool:
+        img_match = self._RE_FIRST_IMAGE.search(html)
+        if not img_match:
+            return False
+        image_url = img_match.group(1)
+
+        scramble_match = self._RE_SCRAMBLE_ID.search(html)
+        scramble_id     = scramble_match.group(1) if scramble_match else '0'
+        filename        = os.path.splitext(os.path.basename(image_url))[0]
+
+        try:
+            image_resp = self.scraper.get(
+                image_url, proxies=self.proxy, timeout=10,
+                headers={'Referer': f'{self.url_prefix}/{code}'},
+            )
+            image_resp.raise_for_status()
+            image = Image.open(BytesIO(image_resp.content)).convert('RGB')
+        except Exception:
+            return False
+
+        num = self._segment_count(scramble_id, code, filename)
+        self._descramble(num, image).save(cover_save_path)
+        return True
+
+    @classmethod
+    def _segment_count(cls, scramble_id: str, aid: str, filename: str) -> int:
+        scramble_id = int(scramble_id)
+        aid         = int(aid)
+        if aid < scramble_id:
+            return 0
+        if aid < cls._SCRAMBLE_268850:
+            return 10
+        divisor = 10 if aid < cls._SCRAMBLE_421926 else 8
+        digest  = hashlib.md5(f'{aid}{filename}'.encode()).hexdigest()
+        return (ord(digest[-1]) % divisor) * 2 + 2
+
+    @staticmethod
+    def _descramble(num: int, image: Image.Image) -> Image.Image:
+        if num == 0:
+            return image
+        w, h   = image.size
+        result = Image.new('RGB', (w, h))
+        block  = h // num
+        over   = h % num
+        for i in range(num):
+            move  = block + over if i == 0 else block
+            y_src = h - (block * (i + 1)) - over
+            y_dst = 0 if i == 0 else block * i + over
+            result.paste(image.crop((0, y_src, w, y_src + move)), (0, y_dst, w, y_dst + move))
+        return result

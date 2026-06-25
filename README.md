@@ -140,7 +140,11 @@ persistent view on startup — so it keeps working, with progress intact, even a
 | Video | `ABC-123`, `ABCD-1234`, `FC2-PPV-123456` |
 | Comic (nhentai) | `123456`, `n123456` |
 | Comic (wnacg) | `w123456` *(not yet supported)* |
-| Comic (JM) | `jm123456` *(not yet supported)* |
+| Comic (JM) | `jm123456`, `j123456` |
+
+JM (18comic.vip) deliberately scrambles its page images into shuffled horizontal strips
+as anti-scraping protection. The bot reassembles the first page back into a normal cover
+image using the site's own (reverse-engineered) descrambling scheme before saving it.
 
 ### systemd Deployment
 
@@ -186,5 +190,6 @@ python3 -m cli.cli --input-file codes.txt --notify all
 | `discord.py` | Discord bot framework |
 | `discord-webhook` | Discord webhook client (CLI) |
 | `httpx` | Async HTTP for Telegram API |
+| `pillow` | Image decoding for JM comic page descrambling |
 | `python-telegram-bot` | Telegram bot client |
 | `requests` | HTTP exceptions used by webhook client |

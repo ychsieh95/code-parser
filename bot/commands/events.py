@@ -9,7 +9,7 @@ from bot.views import ReadActionView
 from config.settings import COVER_SAVE_DIR as _COVER_DIRS
 from discord import app_commands
 from discord.ext import commands
-from utils.comic_parser import ComicType, ComicParser, NhentaiComicParser
+from utils.comic_parser import ComicType, ComicParser, JmComicParser, NhentaiComicParser
 from utils.code_parser import CodeParser
 from utils.logger import LogLevel
 
@@ -319,7 +319,10 @@ class EventsCog(commands.Cog):
             case ComicType.NHENTAI:
                 parser = NhentaiComicParser()
                 code = re.sub(r'^[nN]', '', code)
-            case ComicType.WNACG | ComicType.JM:
+            case ComicType.JM:
+                parser = JmComicParser()
+                code = re.sub(r'^[jJ][mM]?', '', code)
+            case ComicType.WNACG:
                 return (False, f'`{code}` ({comic_type.name}) is not supported yet.', None)
             case _:
                 logger.print(f'Unsupported comic type for code "{code}"', LogLevel.WARN)

@@ -4,5 +4,6 @@ curl_cffi
 discord.py
 discord-webhook
 httpx
+pillow
 python-telegram-bot
 requests
