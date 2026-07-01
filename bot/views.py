@@ -34,7 +34,7 @@ class ReadActionView(discord.ui.View):
 
         message  = interaction.message
         channel  = interaction.channel
-        await self.db.add_read_receipt(message.id, interaction.user.id)
+        await self.db.add_read_receipt(message.id, channel.id, interaction.user.id)
         read_by  = self.db.get_read_receipts(message.id)
         eligible = self._eligible_user_ids(channel)
 

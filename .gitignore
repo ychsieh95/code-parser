@@ -20,6 +20,9 @@ covers/
 # Discord bot runtime config
 bot/config/
 
+# Deployment scripts (host-specific)
+scripts/
+
 # IDE
 .vscode/
 .idea/

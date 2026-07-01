@@ -95,6 +95,34 @@ class AdminCog(commands.Cog):
             logger.print(f'Channel {interaction.channel_id}: read action already {mode.value}', LogLevel.WARN)
             await interaction.response.send_message(f'Read-action mode is already **{mode.name}** for this channel.', ephemeral=True)
 
+    @app_commands.command(name='clear_invalid_message', description='Remove stored read-receipt data for messages that no longer exist')
+    @app_commands.default_permissions(administrator=True)
+    @app_commands.checks.cooldown(1, 30.0, key=lambda i: i.guild_id)
+    async def cmd_clear_invalid_message(self, interaction: discord.Interaction):
+        await interaction.response.defer(ephemeral=True)
+
+        records = self.db.get_read_receipt_messages()
+        cleared = 0
+
+        for message_id, channel_id in records.items():
+            channel = self.bot.get_channel(channel_id)
+            if channel is None:
+                await self.db.clear_read_receipts(message_id)
+                cleared += 1
+                continue
+            try:
+                await channel.fetch_message(message_id)
+            except discord.NotFound:
+                await self.db.clear_read_receipts(message_id)
+                cleared += 1
+            except discord.Forbidden:
+                logger.print(f'Missing permission to check message {message_id} in #{channel}', LogLevel.WARN)
+
+        logger.print(f'Cleared {cleared} invalid message record(s) out of {len(records)}', LogLevel.OK)
+        await interaction.followup.send(
+            f'Cleared **{cleared}** invalid message record(s) out of {len(records)} checked.', ephemeral=True
+        )
+
     @app_commands.command(name='guild_status', description='Show parsing status for all channels in this server')
     @app_commands.default_permissions(administrator=True)
     async def cmd_guild_status(self, interaction: discord.Interaction):

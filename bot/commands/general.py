@@ -48,6 +48,7 @@ class GeneralCog(commands.Cog):
                 '`/enable_message_deletion` — Enable deletion of original messages for this channel\n'
                 '`/disable_message_deletion` — Disable deletion of original messages for this channel\n'
                 '`/set_read_action <mode>` — Set the action taken once every member has marked a result message as read\n'
+                '`/clear_invalid_message` — Remove stored read-receipt data for messages that no longer exist\n'
                 '`/guild_status` — Show parsing status for all channels in this server'
             ),
             inline=False

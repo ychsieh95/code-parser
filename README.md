@@ -96,6 +96,7 @@ DEV_GUILD_ID=123456789 python3 -m bot.main
 | `/enable_message_deletion` | Enable deletion of original messages for the current channel |
 | `/disable_message_deletion` | Disable deletion of original messages for the current channel |
 | `/set_read_action <mode>` | Set the action on a parsing result message once every non-bot member who can see the channel has marked it as read (`None` (default) / `Mark for delete` / `Delete`) |
+| `/clear_invalid_message` | Remove stored read-receipt data for messages that no longer exist |
 | `/guild_status` | Show parsing status for all channels in the server |
 | `/set_retry_num <count>` | Set number of fetch attempts per code (1–10) |
 | `/set_latency <seconds>` | Set retry delay between fetch attempts (0.0–60.0s) |
